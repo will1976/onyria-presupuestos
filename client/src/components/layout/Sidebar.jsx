@@ -7,6 +7,7 @@ const NAV_ITEMS = [
   { id: 'clientes',     icon: '◉', label: 'Clientes'           },
   { id: 'servicios',    icon: '⊞', label: 'Servicios'          },
   { id: 'analisis',     icon: '◎', label: 'Análisis IA'        },
+  { id: 'ayuda',        icon: '?', label: 'Ayuda'               },
 ]
 
 export function Sidebar({ active, onNav }) {

@@ -11,6 +11,7 @@ import NuevoPresupuesto from './pages/NuevoPresupuesto'
 import Presupuestos     from './pages/Presupuestos'
 import Servicios        from './pages/Servicios'
 import Clientes         from './pages/Clientes'
+import Ayuda           from './pages/Ayuda'
 
 function AppShell() {
   const navigate  = useNavigate()
@@ -52,6 +53,7 @@ function AppShell() {
           <Route path="/presupuestos" element={<Presupuestos addToast={addToast} onNuevo={() => navTo('nuevo')} onEditar={handleEditar} />} />
           <Route path="/clientes"     element={<Clientes addToast={addToast} />} />
           <Route path="/servicios"    element={<Servicios addToast={addToast} />} />
+          <Route path="/ayuda"        element={<Ayuda />} />
         </Routes>
       </main>
 
