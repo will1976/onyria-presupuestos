@@ -110,7 +110,7 @@ export default function AnalisisIA({ onPresupuestoGenerado, addToast }) {
           <div style={{ marginTop: 14, padding: '10px 12px', background: `${GOLD}08`, border: `1px solid ${GOLD}20`, borderRadius: 6 }}>
             <div style={{ fontSize: 10, color: GOLD, fontWeight: 600, letterSpacing: '0.06em', marginBottom: 4 }}>¿CÓMO FUNCIONA?</div>
             <div style={{ fontSize: 11, color: TEXT_DIM, lineHeight: 1.7 }}>
-              Gemini analiza el texto, detecta todos los servicios solicitados y los cruza automáticamente con el catálogo de Onyria para asignar precios y categorías.
+              La IA analiza el texto, detecta todos los servicios solicitados y los cruza automáticamente con el catálogo de Onyria para asignar precios y categorías.
             </div>
           </div>
         </div>
