@@ -8,6 +8,7 @@ const MIGRATIONS = [
   '002_fragmento_cliente.sql',
   '003_clientes_activo.sql',
   '004_fix_categoria_enum.sql',
+  '005_seed_servicios.sql',
 ]
 
 async function migrate() {
