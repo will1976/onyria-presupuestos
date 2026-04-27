@@ -66,7 +66,9 @@ export default function Servicios({ addToast }) {
   const [errors,       setErrors]      = useState({})
   const [hoveredRow,   setHoveredRow]  = useState(null)
   const [importing,    setImporting]   = useState(false)
-  const [importResult, setImportResult]= useState(null)
+  const [importPreview,setImportPreview]= useState(null) // array of preview rows
+  const [importSel,   setImportSel]   = useState({})    // { idx: true/false }
+  const [applying,    setApplying]    = useState(false)
   const fileInputRef = useRef(null)
 
   useEffect(() => { loadServicios() }, [])
@@ -216,21 +218,19 @@ export default function Servicios({ addToast }) {
     addToast('Plantilla descargada', 'success')
   }
 
-  // ── Excel import ───────────────────────────────────────────────────────────
+  // ── Excel import — paso 1: previsualizar ──────────────────────────────────
   async function handleImport(e) {
     const file = e.target.files?.[0]
     if (!file) return
     fileInputRef.current.value = ''
-
     setImporting(true)
-    setImportResult(null)
     try {
       const buffer = await file.arrayBuffer()
       const wb     = XLSX.read(buffer, { type: 'array' })
       const ws     = wb.Sheets[wb.SheetNames[0]]
       const rows   = XLSX.utils.sheet_to_json(ws, { defval: '' })
 
-      let ok = 0, errores = []
+      const preview = []
       for (const [i, row] of rows.entries()) {
         const nombre    = String(row.nombre || '').trim()
         const categoria = String(row.categoria || '').trim().toLowerCase()
@@ -240,26 +240,81 @@ export default function Servicios({ addToast }) {
         const activo    = String(row.activo  || 'si').trim().toLowerCase() !== 'no'
         const desc      = String(row.descripcion || '').trim()
 
-        if (!nombre) { errores.push(`Fila ${i + 2}: nombre vacío`); continue }
-        if (!CATEGORIAS_VALIDAS.includes(categoria)) { errores.push(`Fila ${i + 2}: categoría inválida "${categoria}"`); continue }
-        if (!MONEDAS_VALIDAS.includes(moneda))        { errores.push(`Fila ${i + 2}: moneda inválida "${moneda}"`); continue }
+        // Validar
+        let error = null
+        if (!nombre) error = 'Nombre vacío'
+        else if (!CATEGORIAS_VALIDAS.includes(categoria)) error = `Categoría inválida: "${categoria}"`
+        else if (!MONEDAS_VALIDAS.includes(moneda)) error = `Moneda inválida: "${moneda}"`
 
-        try {
-          await serviciosService.crear({ nombre, categoria, descripcion: desc, precio_base: precio, unidad, moneda, activo })
-          ok++
-        } catch (err) {
-          errores.push(`Fila ${i + 2} "${nombre}": ${err.message}`)
+        if (error) {
+          preview.push({ fila: i + 2, nombre: nombre || '—', error, estado: 'error', data: null, existente: null, cambios: [] })
+          continue
         }
+
+        const data = { nombre, categoria, descripcion: desc, precio_base: precio, unidad, moneda, activo }
+
+        // Buscar si existe por nombre (case-insensitive)
+        const existente = servicios.find(s => s.nombre.toLowerCase() === nombre.toLowerCase())
+
+        let estado = 'nuevo'
+        let cambios = []
+        if (existente) {
+          const CAMPOS = [
+            { key: 'categoria',   label: 'Categoría'   },
+            { key: 'descripcion', label: 'Descripción' },
+            { key: 'precio_base', label: 'Precio',     fn: v => parseFloat(v) || 0 },
+            { key: 'unidad',      label: 'Unidad'      },
+            { key: 'moneda',      label: 'Moneda'      },
+            { key: 'activo',      label: 'Estado'      },
+          ]
+          for (const c of CAMPOS) {
+            const vAntes = c.fn ? c.fn(existente[c.key]) : existente[c.key]
+            const vDespues = c.fn ? c.fn(data[c.key])    : data[c.key]
+            if (String(vAntes) !== String(vDespues)) {
+              cambios.push({ label: c.label, antes: vAntes, despues: vDespues })
+            }
+          }
+          estado = cambios.length > 0 ? 'modificado' : 'igual'
+        }
+
+        preview.push({ fila: i + 2, nombre, estado, data, existente: existente || null, cambios, error: null })
       }
 
-      await loadServicios()
-      setImportResult({ ok, errores, total: rows.length })
-      if (ok > 0) addToast(`${ok} servicio(s) importado(s) correctamente`, 'success')
-      if (errores.length > 0) addToast(`${errores.length} fila(s) con error`, 'error')
+      // Pre-seleccionar nuevos y modificados
+      const sel = {}
+      preview.forEach((r, i) => { if (r.estado === 'nuevo' || r.estado === 'modificado') sel[i] = true })
+      setImportPreview(preview)
+      setImportSel(sel)
     } catch (err) {
       addToast('Error al leer el archivo: ' + err.message, 'error')
     } finally {
       setImporting(false)
+    }
+  }
+
+  // ── Excel import — paso 2: aplicar selección ───────────────────────────────
+  async function aplicarImport() {
+    setApplying(true)
+    let ok = 0, errores = 0
+    try {
+      for (const [i, row] of importPreview.entries()) {
+        if (!importSel[i] || row.estado === 'igual' || row.estado === 'error') continue
+        try {
+          if (row.estado === 'nuevo') {
+            await serviciosService.crear(row.data)
+          } else if (row.estado === 'modificado') {
+            await serviciosService.actualizar(row.existente.id, row.data)
+          }
+          ok++
+        } catch { errores++ }
+      }
+      await loadServicios()
+      setImportPreview(null)
+      setImportSel({})
+      if (ok > 0) addToast(`${ok} servicio(s) aplicados correctamente`, 'success')
+      if (errores > 0) addToast(`${errores} error(es) al aplicar`, 'error')
+    } finally {
+      setApplying(false)
     }
   }
 
@@ -297,30 +352,6 @@ export default function Servicios({ addToast }) {
             <Button onClick={openCrear}>+ Nuevo Servicio</Button>
           </div>
         </div>
-
-        {/* ── Import result ────────────────────────────────────────────── */}
-        {importResult && (
-          <div style={{
-            marginBottom: 14, padding: '12px 16px',
-            background: importResult.errores.length === 0 ? '#0A1F0E' : '#1F110A',
-            border: `1px solid ${importResult.errores.length === 0 ? '#22C55E40' : '#F9731640'}`,
-            borderRadius: 8,
-          }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-              <div>
-                <div style={{ fontSize: 13, fontWeight: 600, color: importResult.errores.length === 0 ? '#22C55E' : '#F97316', marginBottom: 4 }}>
-                  Resultado de importación: {importResult.ok} de {importResult.total} filas importadas
-                </div>
-                {importResult.errores.length > 0 && (
-                  <div style={{ fontSize: 12, color: TEXT_MUTED }}>
-                    {importResult.errores.map((e, i) => <div key={i}>{e}</div>)}
-                  </div>
-                )}
-              </div>
-              <button onClick={() => setImportResult(null)} style={{ background: 'none', border: 'none', color: TEXT_DIM, cursor: 'pointer', fontSize: 16 }}>✕</button>
-            </div>
-          </div>
-        )}
 
         {/* ── Filters ─────────────────────────────────────────────────── */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10, paddingBottom: 16, borderBottom: `1px solid ${BORDER}` }}>
@@ -566,6 +597,167 @@ export default function Servicios({ addToast }) {
           onConfirm={handleEliminar}
           onCancel={() => setConfirm(null)}
         />
+      )}
+
+      {/* ── Modal previsualización importación ─────────────────────────── */}
+      {importPreview && (
+        <div style={{
+          position: 'fixed', inset: 0, background: '#000000CC',
+          zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center',
+          padding: 24,
+        }}>
+          <div style={{
+            background: '#16161A', border: `1px solid ${BORDER}`, borderRadius: 12,
+            width: '100%', maxWidth: 900, maxHeight: '85vh',
+            display: 'flex', flexDirection: 'column',
+          }}>
+            {/* Header */}
+            <div style={{ padding: '20px 24px', borderBottom: `1px solid ${BORDER}`, flexShrink: 0 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div>
+                  <div style={{ fontSize: 17, fontWeight: 700, color: TEXT }}>Previsualización de importación</div>
+                  <div style={{ fontSize: 12, color: TEXT_MUTED, marginTop: 4 }}>
+                    {importPreview.filter(r => r.estado === 'nuevo').length} nuevos ·{' '}
+                    {importPreview.filter(r => r.estado === 'modificado').length} modificados ·{' '}
+                    {importPreview.filter(r => r.estado === 'igual').length} sin cambios ·{' '}
+                    {importPreview.filter(r => r.estado === 'error').length} con error
+                  </div>
+                </div>
+                <button onClick={() => setImportPreview(null)} style={{ background: 'none', border: 'none', color: TEXT_DIM, cursor: 'pointer', fontSize: 20 }}>✕</button>
+              </div>
+              {/* Seleccionar todo */}
+              <div style={{ display: 'flex', gap: 12, marginTop: 12, alignItems: 'center' }}>
+                <button
+                  onClick={() => {
+                    const sel = {}
+                    importPreview.forEach((r, i) => { if (r.estado === 'nuevo' || r.estado === 'modificado') sel[i] = true })
+                    setImportSel(sel)
+                  }}
+                  style={{ fontSize: 12, color: GOLD, background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
+                >
+                  Seleccionar todos
+                </button>
+                <button
+                  onClick={() => setImportSel({})}
+                  style={{ fontSize: 12, color: TEXT_MUTED, background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
+                >
+                  Deseleccionar todos
+                </button>
+              </div>
+            </div>
+
+            {/* Tabla */}
+            <div style={{ flex: 1, overflowY: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                <thead style={{ position: 'sticky', top: 0, background: '#111114', zIndex: 1 }}>
+                  <tr>
+                    {['', 'Estado', 'Nombre', 'Cambios / Detalle'].map((h, i) => (
+                      <th key={i} style={{
+                        padding: '10px 14px', textAlign: 'left', fontSize: 11,
+                        color: TEXT_DIM, textTransform: 'uppercase', letterSpacing: '0.06em',
+                        fontWeight: 600, borderBottom: `1px solid ${BORDER}`,
+                      }}>{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {importPreview.map((row, i) => {
+                    const canSelect = row.estado === 'nuevo' || row.estado === 'modificado'
+                    const isSelected = !!importSel[i]
+                    const COLOR = {
+                      nuevo:      '#22C55E',
+                      modificado: '#F97316',
+                      igual:      TEXT_DIM,
+                      error:      '#EF4444',
+                    }[row.estado]
+                    const LABEL = {
+                      nuevo: 'Nuevo', modificado: 'Modificado', igual: 'Sin cambios', error: 'Error',
+                    }[row.estado]
+
+                    return (
+                      <tr key={i} style={{
+                        background: isSelected ? `${COLOR}08` : 'transparent',
+                        opacity: row.estado === 'igual' ? 0.5 : 1,
+                        borderBottom: `1px solid ${BORDER}20`,
+                      }}>
+                        {/* Checkbox */}
+                        <td style={{ padding: '10px 14px', width: 40 }}>
+                          {canSelect && (
+                            <input
+                              type="checkbox"
+                              checked={isSelected}
+                              onChange={e => setImportSel(s => ({ ...s, [i]: e.target.checked }))}
+                              style={{ accentColor: GOLD, width: 15, height: 15, cursor: 'pointer' }}
+                            />
+                          )}
+                        </td>
+
+                        {/* Estado */}
+                        <td style={{ padding: '10px 14px', width: 110 }}>
+                          <span style={{
+                            fontSize: 11, fontWeight: 700, color: COLOR,
+                            background: COLOR + '20', padding: '3px 10px', borderRadius: 20,
+                            whiteSpace: 'nowrap',
+                          }}>{LABEL}</span>
+                        </td>
+
+                        {/* Nombre */}
+                        <td style={{ padding: '10px 14px', fontSize: 13, color: TEXT, fontWeight: 500 }}>
+                          {row.nombre}
+                          <div style={{ fontSize: 11, color: TEXT_DIM, marginTop: 2 }}>Fila {row.fila}</div>
+                        </td>
+
+                        {/* Cambios / detalle */}
+                        <td style={{ padding: '10px 14px', fontSize: 12 }}>
+                          {row.estado === 'error' && (
+                            <span style={{ color: '#EF4444' }}>{row.error}</span>
+                          )}
+                          {row.estado === 'nuevo' && (
+                            <span style={{ color: TEXT_MUTED }}>
+                              {row.data?.categoria} · {row.data?.moneda} {row.data?.precio_base?.toLocaleString('es-CL')}
+                            </span>
+                          )}
+                          {row.estado === 'igual' && (
+                            <span style={{ color: TEXT_DIM }}>Sin diferencias</span>
+                          )}
+                          {row.estado === 'modificado' && row.cambios.map((c, j) => (
+                            <div key={j} style={{ marginBottom: 2 }}>
+                              <span style={{ color: TEXT_DIM }}>{c.label}: </span>
+                              <span style={{ color: '#EF4444', textDecoration: 'line-through', marginRight: 6 }}>
+                                {String(c.antes)}
+                              </span>
+                              <span style={{ color: '#22C55E' }}>→ {String(c.despues)}</span>
+                            </div>
+                          ))}
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Footer */}
+            <div style={{
+              padding: '16px 24px', borderTop: `1px solid ${BORDER}`,
+              display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0,
+            }}>
+              <div style={{ fontSize: 13, color: TEXT_MUTED }}>
+                {Object.values(importSel).filter(Boolean).length} seleccionado(s) para aplicar
+              </div>
+              <div style={{ display: 'flex', gap: 10 }}>
+                <Button variant="secondary" onClick={() => setImportPreview(null)}>Cancelar</Button>
+                <Button
+                  onClick={aplicarImport}
+                  loading={applying}
+                  disabled={Object.values(importSel).filter(Boolean).length === 0}
+                >
+                  Aplicar selección
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   )
