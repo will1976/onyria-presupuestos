@@ -18,25 +18,14 @@ export default function Dashboard({ onNav }) {
     }).finally(() => setLoading(false))
   }, [])
 
-  // Fallback demo data when API isn't available
   const stats = metricas || {
-    total_mes: 6, total_clp: 16450000, total_usd: 26800,
-    aceptados: 2, rechazados: 1, pendientes: 1,
-    chart: [
-      { mes: 'Ago', total: 3200000 }, { mes: 'Sep', total: 5100000 },
-      { mes: 'Oct', total: 4400000 }, { mes: 'Nov', total: 7800000 },
-      { mes: 'Dic', total: 6200000 }, { mes: 'Ene', total: 16450000 },
-    ],
-    por_estado: { borrador: 1, enviado: 1, aceptado: 2, rechazado: 1, expirado: 1 },
+    total_mes: 0, total_clp: 0, total_usd: 0,
+    aceptados: 0, rechazados: 0, pendientes: 0,
+    chart: [],
+    por_estado: { borrador: 0, enviado: 0, aceptado: 0, rechazado: 0, expirado: 0 },
   }
 
-  const demoPresupuestos = [
-    { id: 1, numero: 'ONY-2025-042', cliente: 'Canal 13', nombre_proyecto: 'Campaña Verano 2025', total: 2850000, moneda: 'CLP', estado: 'aceptado', created_at: '2025-01-15' },
-    { id: 2, numero: 'ONY-2025-043', cliente: 'Spotify LATAM', nombre_proyecto: 'Podcast Series S2', total: 4800, moneda: 'USD', estado: 'enviado', created_at: '2025-01-18' },
-    { id: 3, numero: 'ONY-2025-044', cliente: 'Netflix Chile', nombre_proyecto: 'Serie Documental', total: 12400000, moneda: 'CLP', estado: 'borrador', created_at: '2025-01-20' },
-    { id: 4, numero: 'ONY-2025-040', cliente: 'Warner Bros. LAT', nombre_proyecto: 'Doblaje Feature Film', total: 22000, moneda: 'USD', estado: 'aceptado', created_at: '2025-01-08' },
-  ]
-  const rows = presupuestos.length > 0 ? presupuestos : demoPresupuestos
+  const rows = presupuestos
 
   const maxChart = Math.max(...(stats.chart?.map(d => d.total) || [1]))
 
@@ -66,7 +55,7 @@ export default function Dashboard({ onNav }) {
           Dashboard
         </h1>
         <p style={{ margin: '6px 0 0', color: TEXT_MUTED, fontSize: 13 }}>
-          Enero 2025 · Vista general del estudio
+          Vista general del estudio
         </p>
       </div>
 
