@@ -15,24 +15,23 @@ const MIGRATIONS = [
 async function migrate() {
   console.log('Running migrations...')
   const client = await pool.connect()
-  try {
-    for (const file of MIGRATIONS) {
-      const sqlFile = path.join(__dirname, 'migrations', file)
-      if (!fs.existsSync(sqlFile)) {
-        console.warn(`Migration file not found, skipping: ${file}`)
-        continue
-      }
-      const sql = fs.readFileSync(sqlFile, 'utf8')
-      console.log(`Running: ${file}`)
+  for (const file of MIGRATIONS) {
+    const sqlFile = path.join(__dirname, 'migrations', file)
+    if (!fs.existsSync(sqlFile)) {
+      console.warn(`Migration file not found, skipping: ${file}`)
+      continue
+    }
+    const sql = fs.readFileSync(sqlFile, 'utf8')
+    console.log(`Running: ${file}`)
+    try {
       await client.query(sql)
       console.log(`Done: ${file}`)
+    } catch (err) {
+      console.error(`Migration ${file} failed: ${err.message}`)
     }
-    console.log('All migrations complete')
-  } catch (err) {
-    console.error('Migration error:', err.message)
-  } finally {
-    client.release()
   }
+  console.log('All migrations attempted')
+  client.release()
 }
 
 migrate()
