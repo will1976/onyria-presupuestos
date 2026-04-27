@@ -3,19 +3,32 @@ const fs   = require('fs')
 const path = require('path')
 const { pool } = require('./index')
 
-async function migrate() {
-  console.log('🔄 Running migrations...')
-  const sqlFile = path.join(__dirname, 'migrations', '001_init.sql')
-  const sql     = fs.readFileSync(sqlFile, 'utf8')
+const MIGRATIONS = [
+  '001_init.sql',
+  '002_fragmento_cliente.sql',
+  '003_clientes_activo.sql',
+]
 
+async function migrate() {
+  console.log('Running migrations...')
+  const client = await pool.connect()
   try {
-    await pool.query(sql)
-    console.log('✅ Migrations complete')
+    for (const file of MIGRATIONS) {
+      const sqlFile = path.join(__dirname, 'migrations', file)
+      if (!fs.existsSync(sqlFile)) {
+        console.warn(`Migration file not found, skipping: ${file}`)
+        continue
+      }
+      const sql = fs.readFileSync(sqlFile, 'utf8')
+      console.log(`Running: ${file}`)
+      await client.query(sql)
+      console.log(`Done: ${file}`)
+    }
+    console.log('All migrations complete')
   } catch (err) {
-    console.error('❌ Migration failed:', err.message)
-    process.exit(1)
+    console.error('Migration error:', err.message)
   } finally {
-    await pool.end()
+    client.release()
   }
 }
 
