@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
+import * as XLSX from 'xlsx'
 import { serviciosService } from '../services/servicios.service'
 import { Button, Input, Select, Textarea, Spinner, CategoriaPill } from '../components/ui'
 import { Modal } from '../components/ui/Modal'
@@ -8,6 +9,10 @@ import {
   TEXT, TEXT_MUTED, TEXT_DIM, CATEGORIAS, MONEDAS, UNIDADES,
   formatMonto, getCat,
 } from '../components/theme'
+
+const CATEGORIAS_VALIDAS = ['sonorizacion','locucion','musica_original','musica_archivo','casting','podcast','otro']
+const MONEDAS_VALIDAS    = ['CLP','USD']
+const UNIDADES_VALIDAS   = ['por pieza','por minuto','por hora','por episodio','por idioma','por proyecto','por hito','por día']
 
 const CAT_OPTIONS  = CATEGORIAS.map(c => ({ value: c.id, label: c.label }))
 const UNIT_OPTIONS = UNIDADES.map(u => ({ value: u, label: u }))
@@ -60,6 +65,9 @@ export default function Servicios({ addToast }) {
   const [saving,       setSaving]      = useState(false)
   const [errors,       setErrors]      = useState({})
   const [hoveredRow,   setHoveredRow]  = useState(null)
+  const [importing,    setImporting]   = useState(false)
+  const [importResult, setImportResult]= useState(null)
+  const fileInputRef = useRef(null)
 
   useEffect(() => { loadServicios() }, [])
 
@@ -159,6 +167,102 @@ export default function Servicios({ addToast }) {
   const activos   = servicios.filter(s => s.activo).length
   const sinPrecio = servicios.filter(s => !s.precio_base).length
 
+  // ── Excel export ───────────────────────────────────────────────────────────
+  function exportarExcel() {
+    const data = servicios.map(s => ({
+      nombre:      s.nombre,
+      categoria:   s.categoria,
+      descripcion: s.descripcion || '',
+      precio_base: s.precio_base,
+      unidad:      s.unidad,
+      moneda:      s.moneda,
+      activo:      s.activo ? 'si' : 'no',
+    }))
+    const ws = XLSX.utils.json_to_sheet(data)
+    ws['!cols'] = [{ wch: 40 }, { wch: 20 }, { wch: 50 }, { wch: 14 }, { wch: 16 }, { wch: 8 }, { wch: 8 }]
+    const wb = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(wb, ws, 'Servicios')
+    XLSX.writeFile(wb, 'catalogo_servicios_onyria.xlsx')
+    addToast('Catálogo exportado correctamente', 'success')
+  }
+
+  // ── Excel template download ────────────────────────────────────────────────
+  function descargarPlantilla() {
+    const ejemplos = [
+      { nombre: 'Sonorizacion 30 seg TV Digital', categoria: 'sonorizacion', descripcion: 'Post produccion publicitaria TV Digital', precio_base: 150000, unidad: 'por pieza', moneda: 'CLP', activo: 'si' },
+      { nombre: 'Locucion 15 seg Solo Digital',   categoria: 'locucion',     descripcion: 'Locucion derechos Solo Digital',          precio_base: 80000,  unidad: 'por pieza', moneda: 'CLP', activo: 'si' },
+      { nombre: 'Musica Archivo TV',               categoria: 'musica_archivo', descripcion: 'Licencia musica de archivo para TV',  precio_base: 200,    unidad: 'por pieza', moneda: 'USD', activo: 'si' },
+    ]
+    const ws = XLSX.utils.json_to_sheet(ejemplos)
+    ws['!cols'] = [{ wch: 40 }, { wch: 20 }, { wch: 50 }, { wch: 14 }, { wch: 16 }, { wch: 8 }, { wch: 8 }]
+
+    // Agregar nota con categorías válidas en una segunda hoja
+    const wsInfo = XLSX.utils.aoa_to_sheet([
+      ['CAMPO',        'VALORES VÁLIDOS',                                                            'OBLIGATORIO'],
+      ['nombre',       'Texto libre',                                                                 'Sí'],
+      ['categoria',    CATEGORIAS_VALIDAS.join(' | '),                                               'Sí'],
+      ['descripcion',  'Texto libre',                                                                 'No'],
+      ['precio_base',  'Número (ej: 150000)',                                                        'Sí'],
+      ['unidad',       UNIDADES_VALIDAS.join(' | '),                                                 'Sí'],
+      ['moneda',       'CLP | USD',                                                                  'Sí'],
+      ['activo',       'si | no',                                                                    'No (default: si)'],
+    ])
+    wsInfo['!cols'] = [{ wch: 16 }, { wch: 80 }, { wch: 14 }]
+
+    const wb = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(wb, ws, 'Servicios')
+    XLSX.utils.book_append_sheet(wb, wsInfo, 'Instrucciones')
+    XLSX.writeFile(wb, 'plantilla_servicios_onyria.xlsx')
+    addToast('Plantilla descargada', 'success')
+  }
+
+  // ── Excel import ───────────────────────────────────────────────────────────
+  async function handleImport(e) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    fileInputRef.current.value = ''
+
+    setImporting(true)
+    setImportResult(null)
+    try {
+      const buffer = await file.arrayBuffer()
+      const wb     = XLSX.read(buffer, { type: 'array' })
+      const ws     = wb.Sheets[wb.SheetNames[0]]
+      const rows   = XLSX.utils.sheet_to_json(ws, { defval: '' })
+
+      let ok = 0, errores = []
+      for (const [i, row] of rows.entries()) {
+        const nombre    = String(row.nombre || '').trim()
+        const categoria = String(row.categoria || '').trim().toLowerCase()
+        const precio    = parseFloat(String(row.precio_base).replace(',', '.')) || 0
+        const unidad    = String(row.unidad || 'por pieza').trim()
+        const moneda    = String(row.moneda  || 'CLP').trim().toUpperCase()
+        const activo    = String(row.activo  || 'si').trim().toLowerCase() !== 'no'
+        const desc      = String(row.descripcion || '').trim()
+
+        if (!nombre) { errores.push(`Fila ${i + 2}: nombre vacío`); continue }
+        if (!CATEGORIAS_VALIDAS.includes(categoria)) { errores.push(`Fila ${i + 2}: categoría inválida "${categoria}"`); continue }
+        if (!MONEDAS_VALIDAS.includes(moneda))        { errores.push(`Fila ${i + 2}: moneda inválida "${moneda}"`); continue }
+
+        try {
+          await serviciosService.crear({ nombre, categoria, descripcion: desc, precio_base: precio, unidad, moneda, activo })
+          ok++
+        } catch (err) {
+          errores.push(`Fila ${i + 2} "${nombre}": ${err.message}`)
+        }
+      }
+
+      await loadServicios()
+      setImportResult({ ok, errores, total: rows.length })
+      if (ok > 0) addToast(`${ok} servicio(s) importado(s) correctamente`, 'success')
+      if (errores.length > 0) addToast(`${errores.length} fila(s) con error`, 'error')
+    } catch (err) {
+      addToast('Error al leer el archivo: ' + err.message, 'error')
+    } finally {
+      setImporting(false)
+    }
+  }
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
 
@@ -179,8 +283,44 @@ export default function Servicios({ addToast }) {
               )}
             </p>
           </div>
-          <Button onClick={openCrear}>+ Nuevo Servicio</Button>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+            <input ref={fileInputRef} type="file" accept=".xlsx,.xls" onChange={handleImport} style={{ display: 'none' }} />
+            <Button variant="secondary" onClick={descargarPlantilla} title="Descarga una plantilla Excel con el formato correcto">
+              ↓ Plantilla
+            </Button>
+            <Button variant="secondary" onClick={() => fileInputRef.current?.click()} loading={importing}>
+              ↑ Importar Excel
+            </Button>
+            <Button variant="secondary" onClick={exportarExcel} disabled={servicios.length === 0}>
+              ↓ Exportar Excel
+            </Button>
+            <Button onClick={openCrear}>+ Nuevo Servicio</Button>
+          </div>
         </div>
+
+        {/* ── Import result ────────────────────────────────────────────── */}
+        {importResult && (
+          <div style={{
+            marginBottom: 14, padding: '12px 16px',
+            background: importResult.errores.length === 0 ? '#0A1F0E' : '#1F110A',
+            border: `1px solid ${importResult.errores.length === 0 ? '#22C55E40' : '#F9731640'}`,
+            borderRadius: 8,
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+              <div>
+                <div style={{ fontSize: 13, fontWeight: 600, color: importResult.errores.length === 0 ? '#22C55E' : '#F97316', marginBottom: 4 }}>
+                  Resultado de importación: {importResult.ok} de {importResult.total} filas importadas
+                </div>
+                {importResult.errores.length > 0 && (
+                  <div style={{ fontSize: 12, color: TEXT_MUTED }}>
+                    {importResult.errores.map((e, i) => <div key={i}>{e}</div>)}
+                  </div>
+                )}
+              </div>
+              <button onClick={() => setImportResult(null)} style={{ background: 'none', border: 'none', color: TEXT_DIM, cursor: 'pointer', fontSize: 16 }}>✕</button>
+            </div>
+          </div>
+        )}
 
         {/* ── Filters ─────────────────────────────────────────────────── */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10, paddingBottom: 16, borderBottom: `1px solid ${BORDER}` }}>
