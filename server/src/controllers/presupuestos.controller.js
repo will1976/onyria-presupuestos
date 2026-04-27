@@ -142,6 +142,7 @@ async function crear(req, res, next) {
       cliente_id,
       nombre_proyecto, tipo_proyecto,
       moneda = 'CLP', subtotal = 0, descuento = 0, impuesto = 0, total = 0,
+      ajuste_total, ajuste_motivo,
       estado = 'borrador', validez = 30,
       fecha, notas, condiciones,
       items = [],
@@ -186,13 +187,16 @@ async function crear(req, res, next) {
       INSERT INTO presupuestos (
         numero, cliente_id, cliente_nombre, cliente_empresa, cliente_email, cliente_telefono,
         nombre_proyecto, tipo_proyecto, moneda, subtotal, descuento, impuesto, total,
+        ajuste_total, ajuste_motivo,
         estado, validez_dias, fecha_emision, notas, condiciones, creado_por
-      ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19)
+      ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21)
       RETURNING *
     `, [
       numero, clienteId, cliente || null, empresa || null, email_cliente || null, telefono || null,
       nombre_proyecto, tipo_proyecto || null,
       moneda, parseFloat(subtotal), parseFloat(descuento), parseFloat(impuesto), parseFloat(total),
+      ajuste_total != null ? parseFloat(ajuste_total) : null,
+      ajuste_motivo || null,
       estado, parseInt(validez) || 30, fecha || new Date().toISOString().split('T')[0], notas || null, condiciones || null,
       null,
     ])
@@ -239,6 +243,7 @@ async function actualizar(req, res, next) {
       cliente, empresa, email_cliente, telefono,
       cliente_id,
       nombre_proyecto, tipo_proyecto, moneda, subtotal, descuento, impuesto, total,
+      ajuste_total, ajuste_motivo,
       validez, fecha, notas, condiciones, estado,
       items = [],
     } = req.body
@@ -272,12 +277,14 @@ async function actualizar(req, res, next) {
         descuento        = COALESCE($10, descuento),
         impuesto         = COALESCE($11, impuesto),
         total            = COALESCE($12, total),
-        estado           = COALESCE($13, estado),
-        validez_dias     = COALESCE($14, validez_dias),
-        fecha_emision    = COALESCE($15, fecha_emision),
-        notas            = $16,
-        condiciones      = $17
-      WHERE id = $18
+        ajuste_total     = $13,
+        ajuste_motivo    = $14,
+        estado           = COALESCE($15, estado),
+        validez_dias     = COALESCE($16, validez_dias),
+        fecha_emision    = COALESCE($17, fecha_emision),
+        notas            = $18,
+        condiciones      = $19
+      WHERE id = $20
     `, [
       clienteId,
       cliente || null, empresa ?? null, email_cliente ?? null, telefono ?? null,
@@ -286,6 +293,8 @@ async function actualizar(req, res, next) {
       descuento != null ? parseFloat(descuento) : null,
       impuesto != null ? parseFloat(impuesto) : null,
       total != null ? parseFloat(total) : null,
+      ajuste_total != null ? parseFloat(ajuste_total) : null,
+      ajuste_motivo || null,
       estado || null, validez ? parseInt(validez) : null, fecha || null,
       notas ?? null, condiciones ?? null,
       req.params.id,

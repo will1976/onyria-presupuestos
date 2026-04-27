@@ -163,6 +163,9 @@ export default function NuevoPresupuesto({ datosIA, editandoId, addToast }) {
   const [showClienteDrop, setShowClienteDrop] = useState(false)
   const [guardandoCliente, setGuardandoCliente] = useState(false)
   const [modalCrearCliente, setModalCrearCliente] = useState(false)
+  const [ajusteActivo,    setAjusteActivo]    = useState(false)
+  const [ajusteTotal,     setAjusteTotal]     = useState('')
+  const [ajusteMotivo,    setAjusteMotivo]    = useState('')
 
   const [items, setItems] = useState(
     datosIA?.servicios?.length
@@ -277,6 +280,11 @@ export default function NuevoPresupuesto({ datosIA, editandoId, addToast }) {
           notas:           p.notas             || '',
           condiciones:     p.condiciones       || DEFAULT_CONDITIONS,
         })
+        if (p.ajuste_total != null) {
+          setAjusteActivo(true)
+          setAjusteTotal(String(p.ajuste_total))
+          setAjusteMotivo(p.ajuste_motivo || '')
+        }
         setItems(
           p.items?.length
             ? p.items.map(item => ({
@@ -301,7 +309,8 @@ export default function NuevoPresupuesto({ datosIA, editandoId, addToast }) {
   const descuentoMonto = subtotal * (parseFloat(form.descuento || 0) / 100)
   const baseImponible  = subtotal - descuentoMonto
   const ivaMonto       = baseImponible * (parseFloat(form.iva || 0) / 100)
-  const total          = baseImponible + ivaMonto
+  const totalCalculado = baseImponible + ivaMonto
+  const totalFinal     = ajusteActivo && ajusteTotal !== '' ? parseFloat(ajusteTotal) || 0 : totalCalculado
   const fmt            = (n) => formatMonto(n, form.moneda)
 
   function addItem()            { setItems(p => [...p, makeItem()]) }
@@ -398,6 +407,7 @@ export default function NuevoPresupuesto({ datosIA, editandoId, addToast }) {
     if (!form.cliente.trim())         e.cliente         = 'Requerido'
     if (!form.nombre_proyecto.trim()) e.nombre_proyecto = 'Requerido'
     if (items.every(i => !i.descripcion.trim())) e.items = 'Agrega al menos un ítem con descripción'
+    if (ajusteActivo && ajusteTotal !== '' && !ajusteMotivo.trim()) e.ajuste_motivo = 'Debes indicar el motivo del ajuste'
     setErrors(e)
     return Object.keys(e).length === 0
   }
@@ -429,7 +439,9 @@ export default function NuevoPresupuesto({ datosIA, editandoId, addToast }) {
         estado,
         cliente_id: clienteIdVinculado || null,
         subtotal, descuento: parseFloat(form.descuento),
-        impuesto: ivaMonto, total,
+        impuesto: ivaMonto, total: totalFinal,
+        ajuste_total:  ajusteActivo && ajusteTotal !== '' ? parseFloat(ajusteTotal) : null,
+        ajuste_motivo: ajusteActivo && ajusteTotal !== '' ? ajusteMotivo : null,
         items: items.map(i => ({
           descripcion_personalizada: i.descripcion,
           categoria:         i.categoria,
@@ -799,7 +811,80 @@ export default function NuevoPresupuesto({ datosIA, editandoId, addToast }) {
             <TotalRow label={`IVA (${form.iva}%)`} value={fmt(ivaMonto)} />
 
             <div style={{ borderTop: `1px solid ${GOLD}30`, paddingTop: 14, marginTop: 4 }}>
-              <TotalRow label="TOTAL" value={fmt(total)} large gold />
+              {ajusteActivo
+                ? <TotalRow label="Total calculado" value={fmt(totalCalculado)} color={TEXT_DIM} />
+                : <TotalRow label="TOTAL" value={fmt(totalCalculado)} large gold />
+              }
+            </div>
+
+            {/* Ajuste manual de total */}
+            <div style={{
+              border: `1px solid ${ajusteActivo ? GOLD + '50' : BORDER}`,
+              borderRadius: 8, padding: '12px 14px',
+              background: ajusteActivo ? `${GOLD}06` : 'transparent',
+              marginTop: 4,
+            }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', userSelect: 'none' }}>
+                <input
+                  type="checkbox"
+                  checked={ajusteActivo}
+                  onChange={e => {
+                    setAjusteActivo(e.target.checked)
+                    if (!e.target.checked) { setAjusteTotal(''); setAjusteMotivo('') }
+                    else setAjusteTotal(String(Math.round(totalCalculado)))
+                  }}
+                  style={{ accentColor: GOLD, width: 14, height: 14 }}
+                />
+                <span style={{ fontSize: 12, color: ajusteActivo ? GOLD : TEXT_MUTED, fontWeight: 600 }}>
+                  Ajustar total manualmente
+                </span>
+              </label>
+
+              {ajusteActivo && (
+                <div style={{ marginTop: 12, display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  <div>
+                    <div style={{ fontSize: 11, color: TEXT_MUTED, marginBottom: 4 }}>Total ajustado ({form.moneda})</div>
+                    <input
+                      type="number"
+                      value={ajusteTotal}
+                      onChange={e => setAjusteTotal(e.target.value)}
+                      placeholder="0"
+                      style={{
+                        width: '100%', boxSizing: 'border-box',
+                        background: BG_BASE, border: `1px solid ${GOLD}50`,
+                        borderRadius: 5, padding: '7px 10px',
+                        color: GOLD, fontSize: 16, fontWeight: 700,
+                        outline: 'none', textAlign: 'right',
+                      }}
+                    />
+                  </div>
+                  <div>
+                    <div style={{ fontSize: 11, color: TEXT_MUTED, marginBottom: 4 }}>
+                      Motivo del ajuste *
+                    </div>
+                    <textarea
+                      value={ajusteMotivo}
+                      onChange={e => setAjusteMotivo(e.target.value)}
+                      placeholder="Ej: Descuento especial por volumen, ajuste pactado con el cliente..."
+                      rows={3}
+                      style={{
+                        width: '100%', boxSizing: 'border-box', resize: 'vertical',
+                        background: BG_BASE,
+                        border: `1px solid ${errors.ajuste_motivo ? '#EF4444' : BORDER}`,
+                        borderRadius: 5, padding: '7px 10px',
+                        color: TEXT, fontSize: 12, lineHeight: 1.5,
+                        outline: 'none', fontFamily: 'inherit',
+                      }}
+                    />
+                    {errors.ajuste_motivo && (
+                      <div style={{ fontSize: 11, color: '#EF4444', marginTop: 2 }}>{errors.ajuste_motivo}</div>
+                    )}
+                  </div>
+                  <div style={{ borderTop: `1px solid ${GOLD}30`, paddingTop: 10 }}>
+                    <TotalRow label="TOTAL AJUSTADO" value={fmt(parseFloat(ajusteTotal) || 0)} large gold />
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 

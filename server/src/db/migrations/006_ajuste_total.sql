@@ -1,0 +1,3 @@
+ALTER TABLE presupuestos
+  ADD COLUMN IF NOT EXISTS ajuste_total NUMERIC,
+  ADD COLUMN IF NOT EXISTS ajuste_motivo TEXT;

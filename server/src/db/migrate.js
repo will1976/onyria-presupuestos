@@ -9,6 +9,7 @@ const MIGRATIONS = [
   '003_clientes_activo.sql',
   '004_fix_categoria_enum.sql',
   '005_seed_servicios.sql',
+  '006_ajuste_total.sql',
 ]
 
 async function migrate() {
