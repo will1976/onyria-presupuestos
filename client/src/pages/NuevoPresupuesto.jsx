@@ -280,10 +280,14 @@ export default function NuevoPresupuesto({ datosIA, editandoId, addToast }) {
           notas:           p.notas             || '',
           condiciones:     p.condiciones       || DEFAULT_CONDITIONS,
         })
-        if (p.ajuste_total != null) {
+        if (p.ajuste_total != null && p.ajuste_total !== '') {
           setAjusteActivo(true)
           setAjusteTotal(String(p.ajuste_total))
           setAjusteMotivo(p.ajuste_motivo || '')
+        } else {
+          setAjusteActivo(false)
+          setAjusteTotal('')
+          setAjusteMotivo('')
         }
         setItems(
           p.items?.length
@@ -478,6 +482,9 @@ export default function NuevoPresupuesto({ datosIA, editandoId, addToast }) {
     })
     setItems([makeItem()])
     setErrors({})
+    setAjusteActivo(false)
+    setAjusteTotal('')
+    setAjusteMotivo('')
     setConfirmLimpiar(false)
   }
 

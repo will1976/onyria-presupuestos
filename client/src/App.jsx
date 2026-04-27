@@ -49,7 +49,7 @@ function AppShell() {
           <Route path="/dashboard"    element={<Dashboard onNav={navTo} />} />
           <Route path="/analisis"     element={<AnalisisIA onPresupuestoGenerado={handlePresupuestoDesdeIA} addToast={addToast} />} />
           <Route path="/nuevo"        element={<NuevoPresupuesto datosIA={datosIA} addToast={addToast} />} />
-          <Route path="/editar"       element={<NuevoPresupuesto editandoId={editandoId} addToast={addToast} />} />
+          <Route path="/editar"       element={<NuevoPresupuesto key={editandoId} editandoId={editandoId} addToast={addToast} />} />
           <Route path="/presupuestos" element={<Presupuestos addToast={addToast} onNuevo={() => navTo('nuevo')} onEditar={handleEditar} />} />
           <Route path="/clientes"     element={<Clientes addToast={addToast} />} />
           <Route path="/servicios"    element={<Servicios addToast={addToast} />} />
