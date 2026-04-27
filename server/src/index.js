@@ -54,10 +54,19 @@ app.use('/api/servicios',     serviciosRoutes)
 app.use('/api/clientes',      clientesRoutes)
 app.use('/api/ia',            iaRoutes)
 
-// ── 404 ────────────────────────────────────────────────────────────────────
-app.use((req, res) => {
-  res.status(404).json({ success: false, error: `Ruta no encontrada: ${req.method} ${req.path}` })
-})
+// ── Servir React build en producción ──────────────────────────────────────
+if (config.nodeEnv === 'production') {
+  const clientBuild = path.join(__dirname, '../../client/dist')
+  app.use(express.static(clientBuild))
+  app.get('*', (req, res) => {
+    res.sendFile(path.join(clientBuild, 'index.html'))
+  })
+} else {
+  // ── 404 (solo en desarrollo) ─────────────────────────────────────────────
+  app.use((req, res) => {
+    res.status(404).json({ success: false, error: `Ruta no encontrada: ${req.method} ${req.path}` })
+  })
+}
 
 // ── Global error handler ───────────────────────────────────────────────────
 app.use(errorHandler)

@@ -12,6 +12,8 @@
     "dev:client": "npm run dev --workspace=client",
     "install:all": "npm install && npm install --workspace=client && npm install --workspace=server",
     "db:migrate": "npm run migrate --workspace=server",
+    "build": "npm run build --workspace=client",
+    "start": "node server/src/index.js",
     "db:seed": "npm run seed --workspace=server"
   },
   "devDependencies": {
