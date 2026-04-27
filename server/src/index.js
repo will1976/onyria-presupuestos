@@ -7,6 +7,7 @@ const path         = require('path')
 const config       = require('./config')
 const errorHandler = require('./middleware/errorHandler')
 const { apiLimiter } = require('./middleware/rateLimiter')
+const { pool }     = require('./db')
 
 // Routes
 const authRoutes          = require('./routes/auth.routes')
@@ -70,6 +71,17 @@ if (config.nodeEnv === 'production') {
 
 // ── Global error handler ───────────────────────────────────────────────────
 app.use(errorHandler)
+
+// ── Ensure ajuste columns exist (safety net independiente de migraciones) ──
+pool.query(`
+  ALTER TABLE presupuestos
+    ADD COLUMN IF NOT EXISTS ajuste_total  NUMERIC,
+    ADD COLUMN IF NOT EXISTS ajuste_motivo TEXT
+`).then(() => {
+  console.log('DB: columnas ajuste_total / ajuste_motivo OK')
+}).catch(err => {
+  console.error('DB: no se pudo agregar columnas ajuste:', err.message)
+})
 
 // ── Start ──────────────────────────────────────────────────────────────────
 app.listen(config.port, () => {
