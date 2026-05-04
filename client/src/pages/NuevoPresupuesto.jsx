@@ -28,7 +28,7 @@ function makeItem() {
   return {
     id: Date.now() + Math.random(),
     descripcion: '', categoria: 'sonorizacion',
-    cantidad: 1, precioUnitario: 0, notas: '', fragmento_cliente: '',
+    cantidad: 1, precioUnitario: 0, notas: '', fragmento_cliente: '', porcentajeBoleta: 0,
   }
 }
 
@@ -299,6 +299,7 @@ export default function NuevoPresupuesto({ datosIA, editandoId, addToast }) {
                 precioUnitario:   parseFloat(item.precio_unitario) || 0,
                 notas:            item.notas     || '',
                 fragmento_cliente: item.fragmento_cliente || '',
+                porcentajeBoleta: parseFloat(item.porcentaje_boleta) || 0,
               }))
             : [makeItem()]
         )
@@ -324,9 +325,10 @@ export default function NuevoPresupuesto({ datosIA, editandoId, addToast }) {
   function selectServicio(itemId, servicio) {
     setItems(prev => prev.map(i => i.id === itemId ? {
       ...i,
-      descripcion:    servicio.nombre,
-      precioUnitario: parseFloat(servicio.precio_base) || 0,
-      notas:          servicio.descripcion || '',
+      descripcion:      servicio.nombre,
+      precioUnitario:   parseFloat(servicio.precio_base) || 0,
+      notas:            servicio.descripcion || '',
+      porcentajeBoleta: parseFloat(servicio.porcentaje_boleta) || 0,
     } : i))
   }
 
@@ -448,12 +450,13 @@ export default function NuevoPresupuesto({ datosIA, editandoId, addToast }) {
         ajuste_motivo: ajusteActivo && ajusteTotal !== '' ? ajusteMotivo : null,
         items: items.map(i => ({
           descripcion_personalizada: i.descripcion,
-          categoria:         i.categoria,
-          cantidad:          i.cantidad,
-          precio_unitario:   i.precioUnitario,
-          subtotal:          i.cantidad * i.precioUnitario,
-          notas:             i.notas,
-          fragmento_cliente: i.fragmento_cliente || null,
+          categoria:          i.categoria,
+          cantidad:           i.cantidad,
+          precio_unitario:    i.precioUnitario,
+          subtotal:           i.cantidad * i.precioUnitario,
+          notas:              i.notas,
+          fragmento_cliente:  i.fragmento_cliente || null,
+          porcentaje_boleta:  i.porcentajeBoleta || 0,
         })),
       }
       if (editandoId) {
@@ -666,6 +669,7 @@ export default function NuevoPresupuesto({ datosIA, editandoId, addToast }) {
                   { label: 'Nombre / Servicio' },
                   { label: 'Cant.',          width: 80  },
                   { label: 'Precio Unitario',width: 140 },
+                  { label: '% Boleta',       width: 90  },
                   { label: 'Subtotal',       width: 130 },
                   { label: '',               width: 36  },
                 ].map((h, i) => (
@@ -740,6 +744,19 @@ export default function NuevoPresupuesto({ datosIA, editandoId, addToast }) {
                     <td style={{ padding: '10px 14px' }}>
                       <input type="number" value={item.precioUnitario} min={0}
                         onChange={e => updateItem(item.id, 'precioUnitario', parseFloat(e.target.value) || 0)}
+                        style={{
+                          background: BG_BASE, border: `1px solid ${BORDER}`,
+                          borderRadius: 4, padding: '5px 8px',
+                          color: TEXT, fontSize: 13, width: '100%',
+                          outline: 'none', textAlign: 'right',
+                        }}
+                      />
+                    </td>
+
+                    {/* % Boleta */}
+                    <td style={{ padding: '10px 14px' }}>
+                      <input type="number" value={item.porcentajeBoleta} min={0} max={100}
+                        onChange={e => updateItem(item.id, 'porcentajeBoleta', parseFloat(e.target.value) || 0)}
                         style={{
                           background: BG_BASE, border: `1px solid ${BORDER}`,
                           borderRadius: 4, padding: '5px 8px',

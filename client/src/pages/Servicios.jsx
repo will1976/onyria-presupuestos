@@ -16,7 +16,7 @@ const UNIDADES_VALIDAS   = ['por pieza','por minuto','por hora','por episodio','
 
 const CAT_OPTIONS  = CATEGORIAS.map(c => ({ value: c.id, label: c.label }))
 const UNIT_OPTIONS = UNIDADES.map(u => ({ value: u, label: u }))
-const EMPTY = { nombre: '', categoria: 'sonorizacion', descripcion: '', precio_base: 0, unidad: 'por pieza', moneda: 'CLP', activo: true }
+const EMPTY = { nombre: '', categoria: 'sonorizacion', descripcion: '', precio_base: 0, unidad: 'por pieza', moneda: 'CLP', activo: true, porcentaje_boleta: 0 }
 
 // ── Column definitions ─────────────────────────────────────────────────────
 const COLS = [
@@ -572,6 +572,7 @@ export default function Servicios({ addToast }) {
               <Select label="Moneda" value={form.moneda} onChange={v => setField('moneda', v)} options={MONEDAS} />
             </div>
             <Select label="Unidad" value={form.unidad} onChange={v => setField('unidad', v)} options={UNIT_OPTIONS} />
+            <Input label="% Boleta" type="number" value={form.porcentaje_boleta} onChange={v => setField('porcentaje_boleta', parseFloat(v) || 0)} />
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 0' }}>
               <input
                 type="checkbox" id="activo" checked={form.activo}

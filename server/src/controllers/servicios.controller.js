@@ -34,16 +34,17 @@ async function obtener(req, res, next) {
 // POST /api/servicios
 async function crear(req, res, next) {
   try {
-    const { nombre, categoria, descripcion, precio_base, unidad, moneda, activo } = req.body
+    const { nombre, categoria, descripcion, precio_base, unidad, moneda, activo, porcentaje_boleta } = req.body
     if (!nombre) return res.status(400).json({ success: false, error: 'El nombre es requerido' })
 
     const { rows } = await query(`
-      INSERT INTO servicios (nombre, categoria, descripcion, precio_base, unidad, moneda, activo)
-      VALUES ($1, $2, $3, $4, $5, $6, $7)
+      INSERT INTO servicios (nombre, categoria, descripcion, precio_base, unidad, moneda, activo, porcentaje_boleta)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
       RETURNING *
     `, [nombre.trim(), categoria || 'otro', descripcion || null,
         parseFloat(precio_base) || 0, unidad || 'por pieza',
-        moneda || 'CLP', activo !== false])
+        moneda || 'CLP', activo !== false,
+        parseFloat(porcentaje_boleta) || 0])
 
     res.status(201).json({ success: true, data: rows[0] })
   } catch (err) { next(err) }
@@ -52,23 +53,25 @@ async function crear(req, res, next) {
 // PUT /api/servicios/:id
 async function actualizar(req, res, next) {
   try {
-    const { nombre, categoria, descripcion, precio_base, unidad, moneda, activo } = req.body
+    const { nombre, categoria, descripcion, precio_base, unidad, moneda, activo, porcentaje_boleta } = req.body
 
     const { rows } = await query(`
       UPDATE servicios SET
-        nombre      = COALESCE($1, nombre),
-        categoria   = COALESCE($2, categoria),
-        descripcion = $3,
-        precio_base = COALESCE($4, precio_base),
-        unidad      = COALESCE($5, unidad),
-        moneda      = COALESCE($6, moneda),
-        activo      = COALESCE($7, activo)
-      WHERE id = $8
+        nombre             = COALESCE($1, nombre),
+        categoria          = COALESCE($2, categoria),
+        descripcion        = $3,
+        precio_base        = COALESCE($4, precio_base),
+        unidad             = COALESCE($5, unidad),
+        moneda             = COALESCE($6, moneda),
+        activo             = COALESCE($7, activo),
+        porcentaje_boleta  = COALESCE($8, porcentaje_boleta)
+      WHERE id = $9
       RETURNING *
     `, [nombre?.trim() || null, categoria || null, descripcion ?? null,
         precio_base != null ? parseFloat(precio_base) : null,
         unidad || null, moneda || null,
         activo != null ? activo : null,
+        porcentaje_boleta != null ? parseFloat(porcentaje_boleta) : null,
         req.params.id])
 
     if (!rows[0]) return res.status(404).json({ success: false, error: 'Servicio no encontrado' })

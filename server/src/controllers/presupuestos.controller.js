@@ -206,8 +206,8 @@ async function crear(req, res, next) {
       const item = items[idx]
       await client.query(`
         INSERT INTO presupuesto_items
-          (presupuesto_id, servicio_id, descripcion_personalizada, categoria, cantidad, precio_unitario, subtotal, notas, fragmento_cliente, orden)
-        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
+          (presupuesto_id, servicio_id, descripcion_personalizada, categoria, cantidad, precio_unitario, subtotal, notas, fragmento_cliente, porcentaje_boleta, orden)
+        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
       `, [
         pres.id,
         item.servicio_id || null,
@@ -218,6 +218,7 @@ async function crear(req, res, next) {
         parseFloat(item.subtotal) || 0,
         item.notas || null,
         item.fragmento_cliente || null,
+        parseFloat(item.porcentaje_boleta) || 0,
         idx,
       ])
     }
@@ -306,8 +307,8 @@ async function actualizar(req, res, next) {
         const item = items[idx]
         await client.query(`
           INSERT INTO presupuesto_items
-            (presupuesto_id, servicio_id, descripcion_personalizada, categoria, cantidad, precio_unitario, subtotal, notas, fragmento_cliente, orden)
-          VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
+            (presupuesto_id, servicio_id, descripcion_personalizada, categoria, cantidad, precio_unitario, subtotal, notas, fragmento_cliente, porcentaje_boleta, orden)
+          VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
         `, [
           req.params.id, item.servicio_id || null,
           item.descripcion_personalizada || item.descripcion || null,
@@ -317,6 +318,7 @@ async function actualizar(req, res, next) {
           parseFloat(item.subtotal) || 0,
           item.notas || null,
           item.fragmento_cliente || null,
+          parseFloat(item.porcentaje_boleta) || 0,
           idx,
         ])
       }
@@ -399,10 +401,11 @@ async function duplicar(req, res, next) {
     for (const item of original.items) {
       await client.query(`
         INSERT INTO presupuesto_items
-          (presupuesto_id, servicio_id, descripcion_personalizada, categoria, cantidad, precio_unitario, subtotal, notas, orden)
-        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
+          (presupuesto_id, servicio_id, descripcion_personalizada, categoria, cantidad, precio_unitario, subtotal, notas, porcentaje_boleta, orden)
+        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
       `, [nuevo.id, item.servicio_id, item.descripcion_personalizada, item.categoria,
-          item.cantidad, item.precio_unitario, item.subtotal, item.notas, item.orden])
+          item.cantidad, item.precio_unitario, item.subtotal, item.notas,
+          parseFloat(item.porcentaje_boleta) || 0, item.orden])
     }
 
     await client.query('COMMIT')

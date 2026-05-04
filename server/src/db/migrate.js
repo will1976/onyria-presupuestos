@@ -10,6 +10,7 @@ const MIGRATIONS = [
   '004_fix_categoria_enum.sql',
   '005_seed_servicios.sql',
   '006_ajuste_total.sql',
+  '007_porcentaje_boleta.sql',
 ]
 
 async function migrate() {
