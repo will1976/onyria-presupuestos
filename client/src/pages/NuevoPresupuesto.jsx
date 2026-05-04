@@ -450,8 +450,8 @@ export default function NuevoPresupuesto({ datosIA, editandoId, addToast }) {
     }
   }
 
-  function exportarExcel() {
-    exportarPresupuestoExcel({
+  async function exportarExcel() {
+    await exportarPresupuestoExcel({
       numero:           form.numero,
       cliente_nombre:   form.cliente,
       cliente_empresa:  form.empresa,

@@ -73,7 +73,7 @@ export default function Presupuestos({ addToast, onNuevo, onEditar }) {
   async function handleExportarExcel(id) {
     try {
       const res = await presupuestosService.obtener(id)
-      exportarPresupuestoExcel(res.data)
+      await exportarPresupuestoExcel(res.data)
       addToast('Excel exportado correctamente', 'success')
     } catch {
       addToast('Error al exportar Excel', 'error')
