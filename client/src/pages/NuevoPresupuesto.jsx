@@ -7,6 +7,7 @@ import { Button, Input, Select, Textarea } from '../components/ui'
 import { Modal } from '../components/ui/Modal'
 import { ConfirmDialog } from '../components/ui/ConfirmDialog'
 import { PDFPreview } from '../components/pdf/PDFPreview'
+import { exportarPresupuestoExcel } from '../utils/exportPresupuesto'
 import {
   GOLD, CYAN, BG_CARD, BG_BASE, BG_SURFACE, BORDER,
   TEXT, TEXT_MUTED, TEXT_DIM,
@@ -449,6 +450,35 @@ export default function NuevoPresupuesto({ datosIA, editandoId, addToast }) {
     }
   }
 
+  function exportarExcel() {
+    exportarPresupuestoExcel({
+      numero:           form.numero,
+      cliente_nombre:   form.cliente,
+      cliente_empresa:  form.empresa,
+      cliente_email:    form.email_cliente,
+      cliente_telefono: form.telefono,
+      nombre_proyecto:  form.nombre_proyecto,
+      tipo_proyecto:    form.tipo_proyecto,
+      moneda:           form.moneda,
+      fecha_emision:    form.fecha,
+      validez_dias:     parseInt(form.validez) || 30,
+      descuento:        parseFloat(form.descuento) || 0,
+      impuesto:         ivaMonto,
+      total:            totalFinal,
+      ajuste_total:     ajusteActivo && ajusteTotal !== '' ? parseFloat(ajusteTotal) : null,
+      ajuste_motivo:    ajusteMotivo || null,
+      notas:            form.notas,
+      items: items.map(i => ({
+        categoria:                i.categoria,
+        descripcion_personalizada: i.descripcion,
+        cantidad:                 i.cantidad,
+        precio_unitario:          i.precioUnitario,
+        porcentaje_boleta:        i.porcentajeBoleta || 0,
+        notas:                    i.notas,
+      })),
+    })
+  }
+
   async function guardar(estado = 'borrador') {
     if (!validate()) return
     setSaving(true)
@@ -534,6 +564,7 @@ export default function NuevoPresupuesto({ datosIA, editandoId, addToast }) {
             <Button variant="danger" onClick={() => setConfirmLimpiar(true)}>↺ Limpiar</Button>
           )}
           <Button variant="secondary" onClick={() => setShowPreview(true)}>Vista Previa PDF</Button>
+          <Button variant="secondary" onClick={exportarExcel}>↓ Excel</Button>
           {editandoId && (
             <Button variant="cyan" onClick={descargarPDF}>↓ Descargar PDF</Button>
           )}
