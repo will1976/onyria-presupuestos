@@ -52,12 +52,12 @@ export function exportarPresupuestoExcel(presupuesto) {
   }
 
   // ── Resumen financiero ──────────────────────────────────────────────────
-  const descPct    = fmt(descuento)
-  const descMonto  = subtotalSum * (descPct / 100)
-  const baseImpon  = subtotalSum - descMonto
-  const ivaMonto   = fmt(impuesto)
-  const ivaPct     = baseImpon > 0 ? Math.round((ivaMonto / baseImpon) * 100) : 0
-  const totalFinal = ajuste_total != null ? fmt(ajuste_total) : fmt(total)
+  const descPct       = fmt(descuento)
+  const descMonto     = subtotalSum * (descPct / 100)
+  const baseImpon     = subtotalSum - descMonto
+  const ivaMonto      = fmt(impuesto)
+  const ivaPct        = baseImpon > 0 ? Math.round((ivaMonto / baseImpon) * 100) : 0
+  const totalCalculado = baseImpon + ivaMonto
 
   const pad = ['', '', '', '', '', '']
   rows.push([])
@@ -67,11 +67,13 @@ export function exportarPresupuestoExcel(presupuesto) {
     rows.push([...pad, `Base Imponible (${moneda})`, +baseImpon.toFixed(2)])
   }
   rows.push([...pad, `IVA (${ivaPct}%)`,             +ivaMonto.toFixed(2)])
-  rows.push([...pad, `TOTAL (${moneda})`,             +totalFinal.toFixed(2)])
+  rows.push([...pad, `TOTAL (${moneda})`,            +totalCalculado.toFixed(2)])
 
-  if (ajuste_total != null && ajuste_motivo) {
-    rows.push([])
-    rows.push(['Ajuste manual:', ajuste_motivo])
+  if (ajuste_total != null) {
+    rows.push([...pad, `TOTAL AJUSTADO (${moneda})`, +fmt(ajuste_total).toFixed(2)])
+    if (ajuste_motivo) {
+      rows.push(['Motivo ajuste:', ajuste_motivo])
+    }
   }
   if (notas) {
     rows.push([])
