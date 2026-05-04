@@ -310,7 +310,8 @@ export default function NuevoPresupuesto({ datosIA, editandoId, addToast }) {
 
   const setField = (key, val) => setForm(f => ({ ...f, [key]: val }))
 
-  const subtotal       = items.reduce((s, i) => s + i.cantidad * i.precioUnitario, 0)
+  const itemSubtotal   = (i) => i.cantidad * i.precioUnitario * (1 + (i.porcentajeBoleta || 0) / 100)
+  const subtotal       = items.reduce((s, i) => s + itemSubtotal(i), 0)
   const descuentoMonto = subtotal * (parseFloat(form.descuento || 0) / 100)
   const baseImponible  = subtotal - descuentoMonto
   const ivaMonto       = baseImponible * (parseFloat(form.iva || 0) / 100)
@@ -453,7 +454,7 @@ export default function NuevoPresupuesto({ datosIA, editandoId, addToast }) {
           categoria:          i.categoria,
           cantidad:           i.cantidad,
           precio_unitario:    i.precioUnitario,
-          subtotal:           i.cantidad * i.precioUnitario,
+          subtotal:           itemSubtotal(i),
           notas:              i.notas,
           fragmento_cliente:  i.fragmento_cliente || null,
           porcentaje_boleta:  i.porcentajeBoleta || 0,
@@ -771,7 +772,7 @@ export default function NuevoPresupuesto({ datosIA, editandoId, addToast }) {
                       padding: '10px 14px', fontSize: 14, color: TEXT,
                       fontWeight: 600, whiteSpace: 'nowrap',
                     }}>
-                      {fmt(item.cantidad * item.precioUnitario)}
+                      {fmt(itemSubtotal(item))}
                     </td>
 
                     {/* Eliminar */}
