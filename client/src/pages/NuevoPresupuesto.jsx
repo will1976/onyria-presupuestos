@@ -732,6 +732,7 @@ export default function NuevoPresupuesto({ datosIA, editandoId, addToast }) {
                     <td style={{ padding: '10px 14px' }}>
                       <input type="number" value={item.cantidad} min={1}
                         onChange={e => updateItem(item.id, 'cantidad', parseFloat(e.target.value) || 0)}
+                        onFocus={e => e.target.select()}
                         style={{
                           background: BG_BASE, border: `1px solid ${BORDER}`,
                           borderRadius: 4, padding: '5px 8px',
@@ -745,6 +746,7 @@ export default function NuevoPresupuesto({ datosIA, editandoId, addToast }) {
                     <td style={{ padding: '10px 14px' }}>
                       <input type="number" value={item.precioUnitario} min={0}
                         onChange={e => updateItem(item.id, 'precioUnitario', parseFloat(e.target.value) || 0)}
+                        onFocus={e => e.target.select()}
                         style={{
                           background: BG_BASE, border: `1px solid ${BORDER}`,
                           borderRadius: 4, padding: '5px 8px',
@@ -758,6 +760,7 @@ export default function NuevoPresupuesto({ datosIA, editandoId, addToast }) {
                     <td style={{ padding: '10px 14px' }}>
                       <input type="number" value={item.porcentajeBoleta} min={0} max={100}
                         onChange={e => updateItem(item.id, 'porcentajeBoleta', parseFloat(e.target.value) || 0)}
+                        onFocus={e => e.target.select()}
                         style={{
                           background: BG_BASE, border: `1px solid ${BORDER}`,
                           borderRadius: 4, padding: '5px 8px',
@@ -817,6 +820,7 @@ export default function NuevoPresupuesto({ datosIA, editandoId, addToast }) {
               <span style={{ fontSize: 12, color: TEXT_MUTED, flex: 1 }}>Descuento (%)</span>
               <input type="number" value={form.descuento} min={0} max={100}
                 onChange={e => setField('descuento', e.target.value)}
+                onFocus={e => e.target.select()}
                 style={{ background: BG_BASE, border: `1px solid ${BORDER}`, borderRadius: 4, padding: '5px 8px', color: TEXT, fontSize: 12, width: 60, outline: 'none', textAlign: 'right' }}
               />
             </div>
@@ -829,6 +833,7 @@ export default function NuevoPresupuesto({ datosIA, editandoId, addToast }) {
               <span style={{ fontSize: 12, color: TEXT_MUTED, flex: 1 }}>IVA (%)</span>
               <input type="number" value={form.iva} min={0} max={100}
                 onChange={e => setField('iva', e.target.value)}
+                onFocus={e => e.target.select()}
                 style={{ background: BG_BASE, border: `1px solid ${BORDER}`, borderRadius: 4, padding: '5px 8px', color: TEXT, fontSize: 12, width: 60, outline: 'none', textAlign: 'right' }}
               />
             </div>

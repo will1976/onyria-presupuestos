@@ -49,7 +49,7 @@ export function Button({ children, onClick, variant = 'primary', size = 'md', di
 }
 
 // ── Input ──────────────────────────────────────────────────────────────────
-export function Input({ label, value, onChange, type = 'text', placeholder, readOnly, style: sx, error }) {
+export function Input({ label, value, onChange, type = 'text', placeholder, readOnly, style: sx, error, onFocus }) {
   const [focused, setFocused] = useState(false)
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
@@ -64,7 +64,7 @@ export function Input({ label, value, onChange, type = 'text', placeholder, read
         onChange={e => onChange?.(e.target.value)}
         placeholder={placeholder}
         readOnly={readOnly}
-        onFocus={() => setFocused(true)}
+        onFocus={e => { setFocused(true); onFocus?.(e) }}
         onBlur={() => setFocused(false)}
         style={{
           background: readOnly ? BG_SURFACE : BG_BASE,

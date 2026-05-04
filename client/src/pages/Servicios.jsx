@@ -568,11 +568,11 @@ export default function Servicios({ addToast }) {
             <Select label="Categoría" value={form.categoria} onChange={v => setField('categoria', v)} options={CAT_OPTIONS} />
             <Textarea label="Descripción" value={form.descripcion} onChange={v => setField('descripcion', v)} rows={3} />
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-              <Input label="Precio Base" type="number" value={form.precio_base} onChange={v => setField('precio_base', parseFloat(v) || 0)} />
+              <Input label="Precio Base" type="number" value={form.precio_base} onChange={v => setField('precio_base', parseFloat(v) || 0)} onFocus={e => e.target.select()} />
               <Select label="Moneda" value={form.moneda} onChange={v => setField('moneda', v)} options={MONEDAS} />
             </div>
             <Select label="Unidad" value={form.unidad} onChange={v => setField('unidad', v)} options={UNIT_OPTIONS} />
-            <Input label="% Boleta" type="number" value={form.porcentaje_boleta} onChange={v => setField('porcentaje_boleta', parseFloat(v) || 0)} />
+            <Input label="% Boleta" type="number" value={form.porcentaje_boleta} onChange={v => setField('porcentaje_boleta', parseFloat(v) || 0)} onFocus={e => e.target.select()} />
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 0' }}>
               <input
                 type="checkbox" id="activo" checked={form.activo}
