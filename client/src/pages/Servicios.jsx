@@ -23,9 +23,10 @@ const COLS = [
   { key: 'categoria',   label: 'Categoría',   sortable: true,  width: 180 },
   { key: 'nombre',      label: 'Nombre',       sortable: true,  width: 'auto' },
   { key: 'descripcion', label: 'Descripción',  sortable: false, width: 340 },
-  { key: 'precio_base', label: 'Precio',       sortable: true,  width: 150, align: 'right' },
-  { key: 'unidad',      label: 'Unidad',       sortable: false, width: 110 },
-  { key: 'activo',      label: 'Estado',       sortable: true,  width: 90,  align: 'center' },
+  { key: 'precio_base',        label: 'Precio',    sortable: true,  width: 150, align: 'right'  },
+  { key: 'porcentaje_boleta', label: '% Boleta', sortable: true,  width: 90,  align: 'right'  },
+  { key: 'unidad',             label: 'Unidad',   sortable: false, width: 110                  },
+  { key: 'activo',             label: 'Estado',   sortable: true,  width: 90,  align: 'center' },
 ]
 
 // ── Pill button helper ─────────────────────────────────────────────────────
@@ -514,6 +515,13 @@ export default function Servicios({ addToast }) {
                       ) : (
                         <span style={{ color: '#F97316', fontSize: 13, fontWeight: 600 }}>⚠ Sin precio</span>
                       )}
+                    </td>
+
+                    {/* % Boleta */}
+                    <td style={{ padding: '10px 14px', borderBottom: `1px solid ${BORDER}30`, textAlign: 'right' }}>
+                      <span style={{ color: TEXT_MUTED, fontSize: 13 }}>
+                        {parseFloat(s.porcentaje_boleta) > 0 ? `${parseFloat(s.porcentaje_boleta)}%` : '—'}
+                      </span>
                     </td>
 
                     {/* Unidad */}
