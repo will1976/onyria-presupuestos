@@ -173,16 +173,17 @@ export default function Servicios({ addToast }) {
   // ── Excel export ───────────────────────────────────────────────────────────
   function exportarExcel() {
     const data = servicios.map(s => ({
-      nombre:      s.nombre,
-      categoria:   s.categoria,
-      descripcion: s.descripcion || '',
-      precio_base: s.precio_base,
-      unidad:      s.unidad,
-      moneda:      s.moneda,
-      activo:      s.activo ? 'si' : 'no',
+      nombre:             s.nombre,
+      categoria:          s.categoria,
+      descripcion:        s.descripcion || '',
+      precio_base:        s.precio_base,
+      porcentaje_boleta:  parseFloat(s.porcentaje_boleta) || 0,
+      unidad:             s.unidad,
+      moneda:             s.moneda,
+      activo:             s.activo ? 'si' : 'no',
     }))
     const ws = XLSX.utils.json_to_sheet(data)
-    ws['!cols'] = [{ wch: 40 }, { wch: 20 }, { wch: 50 }, { wch: 14 }, { wch: 16 }, { wch: 8 }, { wch: 8 }]
+    ws['!cols'] = [{ wch: 40 }, { wch: 20 }, { wch: 50 }, { wch: 14 }, { wch: 14 }, { wch: 16 }, { wch: 8 }, { wch: 8 }]
     const wb = XLSX.utils.book_new()
     XLSX.utils.book_append_sheet(wb, ws, 'Servicios')
     XLSX.writeFile(wb, 'catalogo_servicios_onyria.xlsx')
@@ -192,23 +193,24 @@ export default function Servicios({ addToast }) {
   // ── Excel template download ────────────────────────────────────────────────
   function descargarPlantilla() {
     const ejemplos = [
-      { nombre: 'Sonorizacion 30 seg TV Digital', categoria: 'sonorizacion', descripcion: 'Post produccion publicitaria TV Digital', precio_base: 150000, unidad: 'por pieza', moneda: 'CLP', activo: 'si' },
-      { nombre: 'Locucion 15 seg Solo Digital',   categoria: 'locucion',     descripcion: 'Locucion derechos Solo Digital',          precio_base: 80000,  unidad: 'por pieza', moneda: 'CLP', activo: 'si' },
-      { nombre: 'Musica Archivo TV',               categoria: 'musica_archivo', descripcion: 'Licencia musica de archivo para TV',  precio_base: 200,    unidad: 'por pieza', moneda: 'USD', activo: 'si' },
+      { nombre: 'Sonorizacion 30 seg TV Digital', categoria: 'sonorizacion',   descripcion: 'Post produccion publicitaria TV Digital', precio_base: 150000, porcentaje_boleta: 20, unidad: 'por pieza', moneda: 'CLP', activo: 'si' },
+      { nombre: 'Locucion 15 seg Solo Digital',   categoria: 'locucion',       descripcion: 'Locucion derechos Solo Digital',          precio_base: 80000,  porcentaje_boleta: 0,  unidad: 'por pieza', moneda: 'CLP', activo: 'si' },
+      { nombre: 'Musica Archivo TV',              categoria: 'musica_archivo', descripcion: 'Licencia musica de archivo para TV',      precio_base: 200,    porcentaje_boleta: 10, unidad: 'por pieza', moneda: 'USD', activo: 'si' },
     ]
     const ws = XLSX.utils.json_to_sheet(ejemplos)
-    ws['!cols'] = [{ wch: 40 }, { wch: 20 }, { wch: 50 }, { wch: 14 }, { wch: 16 }, { wch: 8 }, { wch: 8 }]
+    ws['!cols'] = [{ wch: 40 }, { wch: 20 }, { wch: 50 }, { wch: 14 }, { wch: 16 }, { wch: 16 }, { wch: 8 }, { wch: 8 }]
 
     // Agregar nota con categorías válidas en una segunda hoja
     const wsInfo = XLSX.utils.aoa_to_sheet([
-      ['CAMPO',        'VALORES VÁLIDOS',                                                            'OBLIGATORIO'],
-      ['nombre',       'Texto libre',                                                                 'Sí'],
-      ['categoria',    CATEGORIAS_VALIDAS.join(' | '),                                               'Sí'],
-      ['descripcion',  'Texto libre',                                                                 'No'],
-      ['precio_base',  'Número (ej: 150000)',                                                        'Sí'],
-      ['unidad',       UNIDADES_VALIDAS.join(' | '),                                                 'Sí'],
-      ['moneda',       'CLP | USD',                                                                  'Sí'],
-      ['activo',       'si | no',                                                                    'No (default: si)'],
+      ['CAMPO',              'VALORES VÁLIDOS',                                                            'OBLIGATORIO'],
+      ['nombre',             'Texto libre',                                                                 'Sí'],
+      ['categoria',          CATEGORIAS_VALIDAS.join(' | '),                                               'Sí'],
+      ['descripcion',        'Texto libre',                                                                 'No'],
+      ['precio_base',        'Número (ej: 150000)',                                                        'Sí'],
+      ['porcentaje_boleta',  'Número entre 0 y 100 (ej: 20)',                                             'No (default: 0)'],
+      ['unidad',             UNIDADES_VALIDAS.join(' | '),                                                 'Sí'],
+      ['moneda',             'CLP | USD',                                                                  'Sí'],
+      ['activo',             'si | no',                                                                    'No (default: si)'],
     ])
     wsInfo['!cols'] = [{ wch: 16 }, { wch: 80 }, { wch: 14 }]
 
@@ -233,13 +235,14 @@ export default function Servicios({ addToast }) {
 
       const preview = []
       for (const [i, row] of rows.entries()) {
-        const nombre    = String(row.nombre || '').trim()
-        const categoria = String(row.categoria || '').trim().toLowerCase()
-        const precio    = parseFloat(String(row.precio_base).replace(',', '.')) || 0
-        const unidad    = String(row.unidad || 'por pieza').trim()
-        const moneda    = String(row.moneda  || 'CLP').trim().toUpperCase()
-        const activo    = String(row.activo  || 'si').trim().toLowerCase() !== 'no'
-        const desc      = String(row.descripcion || '').trim()
+        const nombre            = String(row.nombre || '').trim()
+        const categoria         = String(row.categoria || '').trim().toLowerCase()
+        const precio            = parseFloat(String(row.precio_base).replace(',', '.')) || 0
+        const porcentajeBoleta  = parseFloat(String(row.porcentaje_boleta || '0').replace(',', '.')) || 0
+        const unidad            = String(row.unidad || 'por pieza').trim()
+        const moneda            = String(row.moneda  || 'CLP').trim().toUpperCase()
+        const activo            = String(row.activo  || 'si').trim().toLowerCase() !== 'no'
+        const desc              = String(row.descripcion || '').trim()
 
         // Validar
         let error = null
@@ -252,7 +255,7 @@ export default function Servicios({ addToast }) {
           continue
         }
 
-        const data = { nombre, categoria, descripcion: desc, precio_base: precio, unidad, moneda, activo }
+        const data = { nombre, categoria, descripcion: desc, precio_base: precio, porcentaje_boleta: porcentajeBoleta, unidad, moneda, activo }
 
         // Buscar si existe por nombre (case-insensitive)
         const existente = servicios.find(s => s.nombre.toLowerCase() === nombre.toLowerCase())
@@ -261,12 +264,13 @@ export default function Servicios({ addToast }) {
         let cambios = []
         if (existente) {
           const CAMPOS = [
-            { key: 'categoria',   label: 'Categoría'   },
-            { key: 'descripcion', label: 'Descripción' },
-            { key: 'precio_base', label: 'Precio',     fn: v => parseFloat(v) || 0 },
-            { key: 'unidad',      label: 'Unidad'      },
-            { key: 'moneda',      label: 'Moneda'      },
-            { key: 'activo',      label: 'Estado'      },
+            { key: 'categoria',          label: 'Categoría'   },
+            { key: 'descripcion',        label: 'Descripción' },
+            { key: 'precio_base',        label: 'Precio',     fn: v => parseFloat(v) || 0 },
+            { key: 'porcentaje_boleta',  label: '% Boleta',   fn: v => parseFloat(v) || 0 },
+            { key: 'unidad',             label: 'Unidad'      },
+            { key: 'moneda',             label: 'Moneda'      },
+            { key: 'activo',             label: 'Estado'      },
           ]
           for (const c of CAMPOS) {
             const vAntes = c.fn ? c.fn(existente[c.key]) : existente[c.key]
