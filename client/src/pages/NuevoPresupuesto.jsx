@@ -177,6 +177,7 @@ export default function NuevoPresupuesto({ datosIA, editandoId, addToast }) {
           precioUnitario:   parseFloat(s.precio_unitario) || 0,
           notas:            [s.descripcion_detalle, s.notas_tecnicas].filter(Boolean).join(' · ') || '',
           fragmento_cliente: s.fragmento_texto || '',
+          porcentajeBoleta: 0,
         }))
       : [makeItem()]
   )
@@ -207,6 +208,17 @@ export default function NuevoPresupuesto({ datosIA, editandoId, addToast }) {
       .then(res => setClientesBD(res.data || []))
       .catch(() => {})
   }, [])
+
+  // Cuando el catálogo carga y los items vienen de datosIA, completar porcentajeBoleta desde el catálogo
+  useEffect(() => {
+    if (!datosIA || !servicios.length) return
+    setItems(prev => prev.map(item => {
+      if (item.porcentajeBoleta) return item
+      const match = servicios.find(s => s.nombre.toLowerCase() === item.descripcion.toLowerCase())
+      return match ? { ...item, porcentajeBoleta: parseFloat(match.porcentaje_boleta) || 0 } : item
+    }))
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [servicios])
 
   // Auto-validar cliente cuando se carga la lista (datosIA o nuevo presupuesto con nombre ya relleno)
   useEffect(() => {
