@@ -11,7 +11,7 @@ async function analizar(req, res, next) {
 
     // 1. Fetch active catalog to give Gemini context for matching
     const { rows: catalogo } = await query(
-      'SELECT id, nombre, categoria, descripcion, precio_base, unidad, moneda FROM servicios WHERE activo = true ORDER BY categoria, nombre'
+      'SELECT id, nombre, categoria, descripcion, precio_base, unidad, moneda, porcentaje_boleta FROM servicios WHERE activo = true ORDER BY categoria, nombre'
     )
 
     // 2. Ask Gemini to analyze + match against catalog in one pass

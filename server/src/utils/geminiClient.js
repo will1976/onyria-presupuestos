@@ -88,9 +88,18 @@ FORMATO DE RESPUESTA: Devuelve ÚNICAMENTE el JSON, sin markdown, sin bloques de
 // ── USER prompt (incluye catálogo + texto a analizar) ─────────────────────
 function buildUserPrompt(texto, catalogo) {
   const catalogoStr = catalogo.length > 0
-    ? catalogo.map(s =>
-        `  [${s.id}] "${s.nombre}" | cat: ${s.categoria} | precio: ${s.precio_base} ${s.moneda} | unidad: ${s.unidad}`
-      ).join('\n')
+    ? catalogo.map(s => {
+        const parts = [
+          `[${s.id}]`,
+          `"${s.nombre}"`,
+          `cat: ${s.categoria}`,
+          `precio: ${s.precio_base} ${s.moneda}`,
+          `unidad: ${s.unidad}`,
+        ]
+        if (s.descripcion) parts.push(`desc: ${s.descripcion}`)
+        if (parseFloat(s.porcentaje_boleta) > 0) parts.push(`boleta: ${s.porcentaje_boleta}%`)
+        return `  ${parts.join(' | ')}`
+      }).join('\n')
     : '  (catálogo vacío — no hay servicios cargados aún)'
 
   return `CATÁLOGO DE SERVICIOS (usa los IDs exactos para el campo catalogo_id):
