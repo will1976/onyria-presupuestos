@@ -96,7 +96,7 @@ export default function Presupuestos({ addToast, onNuevo, onEditar }) {
   async function handleExcelTemplate(id, numero) {
     try {
       const res = await presupuestosService.excelDiff(id)
-      const { hasTemplate, diffs } = res.data.data
+      const { hasTemplate, diffs } = res.data
 
       if (!hasTemplate) {
         addToast('Template no encontrado en el servidor (server/templates/presupuesto-template.xlsx)', 'error')
@@ -118,7 +118,7 @@ export default function Presupuestos({ addToast, onNuevo, onEditar }) {
     try {
       setExcelLoading(true)
       const blob = await presupuestosService.excelTemplate(id, opciones)
-      const url  = URL.createObjectURL(blob.data)
+      const url  = URL.createObjectURL(blob)
       const a    = document.createElement('a')
       a.href     = url
       a.download = `presupuesto-${numero || id}.xlsx`
