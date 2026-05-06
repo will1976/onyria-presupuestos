@@ -197,8 +197,12 @@ async function generarExcelTemplate(presupuesto, opcionesPrecio = {}) {
     }
   }
 
-  // TOTAL NETO CLIENTE: celda sin fórmula, hay que escribirla explícitamente
-  ws.getRow(13).getCell(10).value = parseFloat(presupuesto.subtotal) || 0
+  // TOTAL NETO CLIENTE: usa el neto ajustado si existe, si no subtotal - descuento
+  const subtotalVal  = parseFloat(presupuesto.subtotal)  || 0
+  const descPct      = parseFloat(presupuesto.descuento) || 0
+  const ajusteNeto   = presupuesto.ajuste_total != null ? parseFloat(presupuesto.ajuste_total) : null
+  const netoCliente  = ajusteNeto !== null ? ajusteNeto : subtotalVal * (1 - descPct / 100)
+  ws.getRow(13).getCell(10).value = netoCliente
 
   // Forzar recálculo completo al abrir en Excel
   wb.calcProperties = { fullCalcOnLoad: true }

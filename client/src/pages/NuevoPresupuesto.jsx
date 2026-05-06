@@ -326,10 +326,10 @@ export default function NuevoPresupuesto({ datosIA, editandoId, addToast }) {
   const itemSubtotal   = (i) => i.cantidad * i.precioUnitario * (1 + (i.porcentajeBoleta || 0) / 100)
   const subtotal       = items.reduce((s, i) => s + itemSubtotal(i), 0)
   const descuentoMonto = subtotal * (parseFloat(form.descuento || 0) / 100)
-  const baseImponible  = subtotal - descuentoMonto
+  const netoCal        = subtotal - descuentoMonto                                                         // neto sin ajuste
+  const baseImponible  = ajusteActivo && ajusteTotal !== '' ? parseFloat(ajusteTotal) || 0 : netoCal       // neto que paga el cliente
   const ivaMonto       = baseImponible * (parseFloat(form.iva || 0) / 100)
-  const totalCalculado = baseImponible + ivaMonto
-  const totalFinal     = ajusteActivo && ajusteTotal !== '' ? parseFloat(ajusteTotal) || 0 : totalCalculado
+  const totalFinal     = baseImponible + ivaMonto
   const fmt            = (n) => formatMonto(n, form.moneda)
 
   function addItem()            { setItems(p => [...p, makeItem()]) }
@@ -885,8 +885,8 @@ export default function NuevoPresupuesto({ datosIA, editandoId, addToast }) {
 
             <div style={{ borderTop: `1px solid ${GOLD}30`, paddingTop: 14, marginTop: 4 }}>
               {ajusteActivo
-                ? <TotalRow label="Total calculado" value={fmt(totalCalculado)} color={TEXT_DIM} />
-                : <TotalRow label="TOTAL" value={fmt(totalCalculado)} large gold />
+                ? <TotalRow label="Neto calculado" value={fmt(netoCal)} color={TEXT_DIM} />
+                : <TotalRow label="TOTAL" value={fmt(totalFinal)} large gold />
               }
             </div>
 
@@ -904,7 +904,7 @@ export default function NuevoPresupuesto({ datosIA, editandoId, addToast }) {
                   onChange={e => {
                     setAjusteActivo(e.target.checked)
                     if (!e.target.checked) { setAjusteTotal(''); setAjusteMotivo('') }
-                    else setAjusteTotal(String(Math.round(totalCalculado)))
+                    else setAjusteTotal(String(Math.round(netoCal)))
                   }}
                   style={{ accentColor: GOLD, width: 14, height: 14 }}
                 />
@@ -916,7 +916,7 @@ export default function NuevoPresupuesto({ datosIA, editandoId, addToast }) {
               {ajusteActivo && (
                 <div style={{ marginTop: 12, display: 'flex', flexDirection: 'column', gap: 10 }}>
                   <div>
-                    <div style={{ fontSize: 11, color: TEXT_MUTED, marginBottom: 4 }}>Total ajustado ({form.moneda})</div>
+                    <div style={{ fontSize: 11, color: TEXT_MUTED, marginBottom: 4 }}>Neto ajustado — antes de IVA ({form.moneda})</div>
                     <input
                       type="number"
                       value={ajusteTotal}
@@ -953,8 +953,9 @@ export default function NuevoPresupuesto({ datosIA, editandoId, addToast }) {
                       <div style={{ fontSize: 11, color: '#EF4444', marginTop: 2 }}>{errors.ajuste_motivo}</div>
                     )}
                   </div>
-                  <div style={{ borderTop: `1px solid ${GOLD}30`, paddingTop: 10 }}>
-                    <TotalRow label="TOTAL AJUSTADO" value={fmt(parseFloat(ajusteTotal) || 0)} large gold />
+                  <div style={{ borderTop: `1px solid ${GOLD}30`, paddingTop: 10, display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    <TotalRow label={`IVA (${form.iva}%)`} value={fmt(ivaMonto)} />
+                    <TotalRow label="TOTAL AJUSTADO" value={fmt(totalFinal)} large gold />
                   </div>
                 </div>
               )}
