@@ -2,7 +2,7 @@ const ExcelJS = require('exceljs')
 const path    = require('path')
 const fs      = require('fs')
 
-const TEMPLATE_PATH = path.join(__dirname, '../../templates/presupuesto-template.xlsx')
+const TEMPLATE_PATH = path.join(__dirname, '../../templates/Template Excel Presupuesto.xlsx')
 
 // ── Normalización ─────────────────────────────────────────────────────────────
 function norm(s) {
