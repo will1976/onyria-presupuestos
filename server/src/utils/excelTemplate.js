@@ -197,6 +197,17 @@ async function generarExcelTemplate(presupuesto, opcionesPrecio = {}) {
     }
   }
 
+  // Escribir totales del presupuesto
+  const subtotal = parseFloat(presupuesto.subtotal) || 0
+  const impuesto = parseFloat(presupuesto.impuesto) || 0
+  const total    = parseFloat(presupuesto.total)    || 0
+  ws.getRow(13).getCell(10).value = subtotal  // TOTAL NETO CLIENTE
+  ws.getRow(14).getCell(10).value = impuesto  // IVA
+  ws.getRow(15).getCell(10).value = total     // TOTAL
+
+  // Forzar recálculo completo al abrir en Excel
+  wb.calcProperties = { fullCalcOnLoad: true }
+
   return wb.xlsx.writeBuffer()
 }
 
