@@ -186,8 +186,8 @@ async function generarExcelTemplate(presupuesto, opcionesPrecio = {}) {
     // Cantidad: siempre se actualiza
     row.getCell(pos.qtyCol).value = qty
 
-    // Precio: solo si el usuario eligió usar el de la app
-    if (opcionesPrecio[mapKey] === 'app' && precioApp > 0) {
+    // Precio: se usa el del template solo cuando el usuario eligió explícitamente 'template'
+    if (opcionesPrecio[mapKey] !== 'template' && precioApp > 0) {
       row.getCell(pos.priceCol).value = precioApp
     }
 
