@@ -29,15 +29,15 @@ const ITEM_MAP = {
   'casting':             { row: 14, nameCol: 1, priceCol: 2, qtyCol: 3, boletaCol: null, section: 'estudio' },
 
   // ── LOCUTOR (cols 1-5, con % Boleta en col 5) ─────────────────────────────
-  'armado madre 30 45':  { row: 28, nameCol: 1, priceCol: 2, qtyCol: 3, boletaCol: 5, section: 'locutor' },
-  'reduccion 20':        { row: 29, nameCol: 1, priceCol: 2, qtyCol: 3, boletaCol: 5, section: 'locutor' },
-  'reduccion 15':        { row: 30, nameCol: 1, priceCol: 2, qtyCol: 3, boletaCol: 5, section: 'locutor' },
-  'reducciones 6':       { row: 31, nameCol: 1, priceCol: 2, qtyCol: 3, boletaCol: 5, section: 'locutor' },
-  'derechos cable':      { row: 32, nameCol: 1, priceCol: 2, qtyCol: 3, boletaCol: 5, section: 'locutor' },
-  'radio':               { row: 33, nameCol: 1, priceCol: 2, qtyCol: 3, boletaCol: 5, section: 'locutor' },
+  'armado madre 30 45':  { row: 28, nameCol: 1, priceCol: 2, qtyCol: 3, boletaCol: null, section: 'locutor' },
+  'reduccion 20':        { row: 29, nameCol: 1, priceCol: 2, qtyCol: 3, boletaCol: null, section: 'locutor' },
+  'reduccion 15':        { row: 30, nameCol: 1, priceCol: 2, qtyCol: 3, boletaCol: null, section: 'locutor' },
+  'reducciones 6':       { row: 31, nameCol: 1, priceCol: 2, qtyCol: 3, boletaCol: null, section: 'locutor' },
+  'derechos cable':      { row: 32, nameCol: 1, priceCol: 2, qtyCol: 3, boletaCol: null, section: 'locutor' },
+  'radio':               { row: 33, nameCol: 1, priceCol: 2, qtyCol: 3, boletaCol: null, section: 'locutor' },
 
   // ── PERSONAJES / DOBLAJES (cols 7-11) ────────────────────────────────────
-  'personajes doblajes': { row: 27, nameCol: 7, priceCol: 8, qtyCol: 9, boletaCol: 11, section: 'personajes' },
+  'personajes doblajes': { row: 27, nameCol: 7, priceCol: 8, qtyCol: 9, boletaCol: null, section: 'personajes' },
 
   // ── MÚSICA ORIGINAL (cols 1-3) ────────────────────────────────────────────
   'musica original base': { row: 43, nameCol: 1, priceCol: 2, qtyCol: 3, boletaCol: null, section: 'musica_original' },
@@ -59,8 +59,8 @@ const ITEM_MAP = {
 // ── Filas vacías disponibles por sección ──────────────────────────────────────
 const EMPTY_ROWS = {
   estudio:         [15, 16, 17, 18].map(r => ({ row: r, nameCol: 1, priceCol: 2, qtyCol: 3, boletaCol: null,  section: 'estudio' })),
-  locutor:         [34, 35, 36].map(r =>   ({ row: r, nameCol: 1, priceCol: 2, qtyCol: 3, boletaCol: 5,     section: 'locutor' })),
-  personajes:      [28, 29, 30, 31, 32, 33, 34, 35].map(r => ({ row: r, nameCol: 7, priceCol: 8, qtyCol: 9, boletaCol: 11, section: 'personajes' })),
+  locutor:         [34, 35, 36].map(r =>   ({ row: r, nameCol: 1, priceCol: 2, qtyCol: 3, boletaCol: null,     section: 'locutor' })),
+  personajes:      [28, 29, 30, 31, 32, 33, 34, 35].map(r => ({ row: r, nameCol: 7, priceCol: 8, qtyCol: 9, boletaCol: null, section: 'personajes' })),
   musica_original: [50, 51].map(r =>       ({ row: r, nameCol: 1, priceCol: 2, qtyCol: 3, boletaCol: null,  section: 'musica_original' })),
   musica_archivo:  [64, 65].map(r =>       ({ row: r, nameCol: 1, priceCol: 2, qtyCol: 3, boletaCol: null,  section: 'musica_archivo' })),
 }
