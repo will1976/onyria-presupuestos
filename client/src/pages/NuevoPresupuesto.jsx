@@ -6,6 +6,7 @@ import { clientesService } from '../services/clientes.service'
 import { Button, Input, Select, Textarea } from '../components/ui'
 import { Modal } from '../components/ui/Modal'
 import { ConfirmDialog } from '../components/ui/ConfirmDialog'
+import { ExcelDiffModal } from '../components/ui/ExcelDiffModal'
 import { PDFPreview } from '../components/pdf/PDFPreview'
 import { exportarPresupuestoExcel } from '../utils/exportPresupuesto'
 import {
@@ -167,6 +168,8 @@ export default function NuevoPresupuesto({ datosIA, editandoId, addToast }) {
   const [ajusteActivo,    setAjusteActivo]    = useState(false)
   const [ajusteTotal,     setAjusteTotal]     = useState('')
   const [ajusteMotivo,    setAjusteMotivo]    = useState('')
+  const [diffModal,       setDiffModal]       = useState(null)
+  const [excelLoading,    setExcelLoading]    = useState(false)
 
   const [items, setItems] = useState(
     datosIA?.servicios?.length
@@ -479,6 +482,35 @@ export default function NuevoPresupuesto({ datosIA, editandoId, addToast }) {
     })
   }
 
+  async function handleExcelTemplate() {
+    if (!editandoId) return
+    try {
+      const res = await presupuestosService.excelDiff(editandoId)
+      const { hasTemplate, diffs } = res.data
+      if (!hasTemplate) { addToast('Template no encontrado en el servidor', 'error'); return }
+      if (diffs.length === 0) await descargarExcelTemplate({})
+      else setDiffModal({ diffs })
+    } catch { addToast('Error al verificar el template', 'error') }
+  }
+
+  async function descargarExcelTemplate(opciones) {
+    try {
+      setExcelLoading(true)
+      const blob = await presupuestosService.excelTemplate(editandoId, opciones)
+      const url  = URL.createObjectURL(blob)
+      const a    = document.createElement('a')
+      a.href     = url
+      a.download = `presupuesto-${form.numero || editandoId}.xlsx`
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(url)
+      addToast('Excel generado correctamente', 'success')
+      setDiffModal(null)
+    } catch { addToast('Error al generar el Excel', 'error') }
+    finally { setExcelLoading(false) }
+  }
+
   async function guardar(estado = 'borrador') {
     if (!validate()) return
     setSaving(true)
@@ -567,6 +599,9 @@ export default function NuevoPresupuesto({ datosIA, editandoId, addToast }) {
           <Button variant="secondary" onClick={exportarExcel}>↓ Excel</Button>
           {editandoId && (
             <Button variant="cyan" onClick={descargarPDF}>↓ Descargar PDF</Button>
+          )}
+          {editandoId && (
+            <Button variant="cyan" onClick={handleExcelTemplate}>⊞ Excel Plantilla</Button>
           )}
           <Button onClick={() => guardar('borrador')} loading={saving}>Guardar</Button>
         </div>
@@ -972,6 +1007,15 @@ export default function NuevoPresupuesto({ datosIA, editandoId, addToast }) {
           </div>
         </div>
       </div>
+
+      {diffModal && (
+        <ExcelDiffModal
+          diffs={diffModal.diffs}
+          loading={excelLoading}
+          onConfirm={(opciones) => descargarExcelTemplate(opciones)}
+          onCancel={() => setDiffModal(null)}
+        />
+      )}
 
       {showPreview && (
         <Modal title="Vista Previa — PDF" onClose={() => setShowPreview(false)} width={720}>
