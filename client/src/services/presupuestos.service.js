@@ -8,6 +8,8 @@ export const presupuestosService = {
   cambiarEstado: (id, estado)=> api.patch(`/presupuestos/${id}/estado`, { estado }),
   eliminar:  (id)            => api.delete(`/presupuestos/${id}`),
   duplicar:  (id)            => api.post(`/presupuestos/${id}/duplicar`),
-  descargarPDF: (id)         => api.get(`/presupuestos/${id}/pdf`, { responseType: 'blob', timeout: 120000 }),
-  metricas:  ()              => api.get('/presupuestos/metricas'),
+  descargarPDF:      (id)            => api.get(`/presupuestos/${id}/pdf`, { responseType: 'blob', timeout: 120000 }),
+  metricas:          ()              => api.get('/presupuestos/metricas'),
+  excelDiff:         (id)            => api.get(`/presupuestos/${id}/excel-diff`),
+  excelTemplate:     (id, opciones)  => api.post(`/presupuestos/${id}/excel-template`, { opcionesPrecio: opciones }, { responseType: 'blob', timeout: 60000 }),
 }

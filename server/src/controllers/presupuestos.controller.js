@@ -1,5 +1,6 @@
-const { query, getClient } = require('../db')
-const { generarPDF }       = require('../utils/pdfGenerator')
+const { query, getClient }                          = require('../db')
+const { generarPDF }                                = require('../utils/pdfGenerator')
+const { templateExists, getDiff, generarExcelTemplate } = require('../utils/excelTemplate')
 
 // ── helpers ────────────────────────────────────────────────────────────────
 function generateNumero() {
@@ -435,4 +436,40 @@ async function pdf(req, res, next) {
   } catch (err) { next(err) }
 }
 
-module.exports = { listar, metricas, obtener, crear, actualizar, cambiarEstado, eliminar, duplicar, pdf }
+// ── GET /api/presupuestos/:id/excel-diff ──────────────────────────────────────
+async function excelDiff(req, res, next) {
+  try {
+    if (!templateExists()) {
+      return res.json({ success: true, data: { hasTemplate: false, diffs: [] } })
+    }
+    const p = await getPresupuestoCompleto(req.params.id)
+    if (!p) return res.status(404).json({ success: false, error: 'Presupuesto no encontrado' })
+
+    const result = await getDiff(p.items || [])
+    res.json({ success: true, data: result })
+  } catch (err) { next(err) }
+}
+
+// ── POST /api/presupuestos/:id/excel-template ─────────────────────────────────
+// Body: { opcionesPrecio: { [normName]: 'app' | 'template' } }
+async function excelTemplate(req, res, next) {
+  try {
+    if (!templateExists()) {
+      return res.status(404).json({ success: false, error: 'Template no encontrado en el servidor. Coloca el archivo en server/templates/presupuesto-template.xlsx' })
+    }
+    const p = await getPresupuestoCompleto(req.params.id)
+    if (!p) return res.status(404).json({ success: false, error: 'Presupuesto no encontrado' })
+
+    const opcionesPrecio = req.body?.opcionesPrecio || {}
+    const buffer = await generarExcelTemplate(p, opcionesPrecio)
+
+    res.set({
+      'Content-Type':        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      'Content-Disposition': `attachment; filename="presupuesto-${p.numero}.xlsx"`,
+      'Content-Length':      buffer.length,
+    })
+    res.send(buffer)
+  } catch (err) { next(err) }
+}
+
+module.exports = { listar, metricas, obtener, crear, actualizar, cambiarEstado, eliminar, duplicar, pdf, excelDiff, excelTemplate }

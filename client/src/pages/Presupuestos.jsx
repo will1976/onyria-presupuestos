@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { exportarPresupuestoExcel } from '../utils/exportPresupuesto'
 import { Badge, Button, ActionBtn, Spinner } from '../components/ui'
 import { ConfirmDialog } from '../components/ui/ConfirmDialog'
+import { ExcelDiffModal } from '../components/ui/ExcelDiffModal'
 import { usePresupuestos } from '../hooks/usePresupuestos'
 import { presupuestosService } from '../services/presupuestos.service'
 import { clientesService } from '../services/clientes.service'
@@ -18,6 +19,8 @@ export default function Presupuestos({ addToast, onNuevo, onEditar }) {
   const [clienteSearch, setClienteSearch] = useState('')
   const [showClientePicker, setShowClientePicker] = useState(false)
   const [confirm,       setConfirm]       = useState(null)
+  const [diffModal,     setDiffModal]     = useState(null)  // { id, numero, diffs }
+  const [excelLoading,  setExcelLoading]  = useState(false)
 
   const { presupuestos, loading, error, refetch, cambiarEstado, eliminar } = usePresupuestos()
 
@@ -87,6 +90,48 @@ export default function Presupuestos({ addToast, onNuevo, onEditar }) {
       addToast('Presupuesto duplicado', 'success')
     } catch (err) {
       addToast(err.message, 'error')
+    }
+  }
+
+  async function handleExcelTemplate(id, numero) {
+    try {
+      const res = await presupuestosService.excelDiff(id)
+      const { hasTemplate, diffs } = res.data.data
+
+      if (!hasTemplate) {
+        addToast('Template no encontrado en el servidor (server/templates/presupuesto-template.xlsx)', 'error')
+        return
+      }
+
+      if (diffs.length === 0) {
+        // Sin diferencias → generar directamente
+        await descargarExcelTemplate(id, numero, {})
+      } else {
+        setDiffModal({ id, numero, diffs })
+      }
+    } catch {
+      addToast('Error al verificar el template', 'error')
+    }
+  }
+
+  async function descargarExcelTemplate(id, numero, opciones) {
+    try {
+      setExcelLoading(true)
+      const blob = await presupuestosService.excelTemplate(id, opciones)
+      const url  = URL.createObjectURL(blob.data)
+      const a    = document.createElement('a')
+      a.href     = url
+      a.download = `presupuesto-${numero || id}.xlsx`
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(url)
+      addToast('Excel generado correctamente', 'success')
+      setDiffModal(null)
+    } catch {
+      addToast('Error al generar el Excel', 'error')
+    } finally {
+      setExcelLoading(false)
     }
   }
 
@@ -286,7 +331,8 @@ export default function Presupuestos({ addToast, onNuevo, onEditar }) {
                       <ActionBtn title="Marcar Rechazado"   color="#EF4444" onClick={() => handleCambiarEstado(p.id, 'rechazado')}>✕</ActionBtn>
                       <ActionBtn title="Duplicar"           color={GOLD}    onClick={() => handleDuplicar(p.id)}>⎘</ActionBtn>
                       <ActionBtn title="Descargar PDF"      color={GOLD}    onClick={() => handleDescargarPDF(p.id, p.numero)}>↓</ActionBtn>
-                      <ActionBtn title="Exportar Excel"    color="#22C55E" onClick={() => handleExportarExcel(p.id)}>⬇</ActionBtn>
+                      <ActionBtn title="Exportar Excel (libre)"   color="#22C55E" onClick={() => handleExportarExcel(p.id)}>⬇</ActionBtn>
+                      <ActionBtn title="Exportar Excel (plantilla)" color={CYAN} onClick={() => handleExcelTemplate(p.id, p.numero)}>⊞</ActionBtn>
                       <ActionBtn title="Eliminar"           color="#EF4444" onClick={() => setConfirm({ id: p.id, numero: p.numero })}>🗑</ActionBtn>
                     </div>
                   </td>
@@ -303,6 +349,15 @@ export default function Presupuestos({ addToast, onNuevo, onEditar }) {
             </div>
           )}
         </div>
+      )}
+
+      {diffModal && (
+        <ExcelDiffModal
+          diffs={diffModal.diffs}
+          loading={excelLoading}
+          onConfirm={(opciones) => descargarExcelTemplate(diffModal.id, diffModal.numero, opciones)}
+          onCancel={() => setDiffModal(null)}
+        />
       )}
 
       {confirm && (
