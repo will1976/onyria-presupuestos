@@ -455,7 +455,7 @@ async function excelDiff(req, res, next) {
 async function excelTemplate(req, res, next) {
   try {
     if (!templateExists()) {
-      return res.status(404).json({ success: false, error: 'Template no encontrado en el servidor. Coloca el archivo en server/templates/presupuesto-template.xlsx' })
+      return res.status(404).json({ success: false, error: 'Template no encontrado en el servidor. Coloca el archivo en server/templates/Template Excel Presupuesto.xlsx' })
     }
     const p = await getPresupuestoCompleto(req.params.id)
     if (!p) return res.status(404).json({ success: false, error: 'Presupuesto no encontrado' })
