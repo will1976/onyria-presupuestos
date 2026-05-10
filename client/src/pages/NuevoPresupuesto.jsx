@@ -993,8 +993,12 @@ export default function NuevoPresupuesto({ datosIA, editandoId, addToast }) {
       </div>
 
       {showPreview && (
-        <Modal title="Vista Previa — PDF" onClose={() => setShowPreview(false)} width={720}>
-          <PDFPreview form={form} items={items} />
+        <Modal title="Vista Previa — PDF" onClose={() => setShowPreview(false)} width={860}>
+          <PDFPreview
+            form={form}
+            items={items}
+            ajuste={{ activo: ajusteActivo, total: ajusteTotal, motivo: ajusteMotivo }}
+          />
         </Modal>
       )}
 

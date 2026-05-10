@@ -1,27 +1,42 @@
 import { formatMonto } from '../theme'
 
-export function PDFPreview({ form, items }) {
+export function PDFPreview({ form, items, ajuste }) {
   const subtotal       = items.reduce((s, i) => s + i.cantidad * i.precioUnitario, 0)
   const descuentoMonto = subtotal * (parseFloat(form.descuento || 0) / 100)
   const baseImponible  = subtotal - descuentoMonto
   const ivaMonto       = baseImponible * (parseFloat(form.iva || 19) / 100)
-  const total          = baseImponible + ivaMonto
+  const totalCalculado = baseImponible + ivaMonto
+  const totalFinal     = ajuste?.activo && ajuste?.total !== '' && ajuste?.total != null
+    ? parseFloat(ajuste.total) || 0
+    : totalCalculado
   const fmt            = (n) => formatMonto(n, form.moneda)
 
   return (
-    <div style={{ background: '#FFFFFF', color: '#1A1A2E', borderRadius: 6, overflow: 'hidden', fontFamily: 'DM Sans, sans-serif', fontSize: 12, lineHeight: 1.6 }}>
-
-      {/* Banner inicio */}
-      <img src="/inicio.png" alt="" style={{ width: '100%', display: 'block' }} />
-
-      <div style={{ padding: '24px 40px 32px' }}>
+    <div style={{
+      width: '210mm',
+      minHeight: '297mm',
+      margin: '0 auto',
+      background: '#FFFFFF',
+      color: '#1A1A2E',
+      borderRadius: 6,
+      overflow: 'hidden',
+      fontFamily: 'DM Sans, sans-serif',
+      fontSize: 12,
+      lineHeight: 1.6,
+      backgroundImage: 'url(/template-presupuesto.png)',
+      backgroundSize: 'cover',
+      backgroundPosition: 'center',
+      backgroundRepeat: 'no-repeat',
+      position: 'relative',
+    }}>
+      <div style={{ padding: '60mm 18mm 50mm', position: 'relative' }}>
 
         {/* Número y fecha */}
-        <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 24 }}>
-          <div style={{ textAlign: 'right', background: '#F9F7F4', borderLeft: '3px solid #C9A84C', padding: '10px 18px', borderRadius: 2 }}>
+        <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 20 }}>
+          <div style={{ textAlign: 'right' }}>
             <div style={{ fontSize: 14, fontWeight: 700 }}>N° {form.numero}</div>
-            <div style={{ fontSize: 11, color: '#666', marginTop: 2 }}>Fecha: {form.fecha}</div>
-            <div style={{ fontSize: 11, color: '#666' }}>Válido por {form.validez} días</div>
+            <div style={{ fontSize: 11, color: '#555', marginTop: 2 }}>Fecha: {form.fecha}</div>
+            <div style={{ fontSize: 11, color: '#555' }}>Válido por {form.validez} días</div>
           </div>
         </div>
 
@@ -75,10 +90,15 @@ export function PDFPreview({ form, items }) {
               <TotalLine label={`Descuento (${form.descuento}%)`} value={`- ${fmt(descuentoMonto)}`} color="#C00" />
             )}
             <TotalLine label={`IVA (${form.iva}%)`} value={fmt(ivaMonto)} />
+            {ajuste?.activo && ajuste?.motivo && (
+              <div style={{ marginTop: 8, padding: '6px 10px', background: '#FAF6EC', borderLeft: '3px solid #C9A84C', fontSize: 10, color: '#666' }}>
+                <strong>Ajuste:</strong> {ajuste.motivo}
+              </div>
+            )}
             <div style={{ borderTop: '2px solid #C9A84C', marginTop: 6, paddingTop: 10,
               display: 'flex', justifyContent: 'space-between', fontWeight: 700, fontSize: 15 }}>
               <span style={{ color: '#C9A84C' }}>TOTAL</span>
-              <span style={{ color: '#C9A84C' }}>{fmt(total)}</span>
+              <span style={{ color: '#C9A84C' }}>{fmt(totalFinal)}</span>
             </div>
           </div>
         </div>
@@ -93,9 +113,6 @@ export function PDFPreview({ form, items }) {
           </div>
         )}
       </div>
-
-      {/* Banner final */}
-      <img src="/final.png" alt="" style={{ width: '100%', display: 'block' }} />
     </div>
   )
 }
