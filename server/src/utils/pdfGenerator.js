@@ -1,14 +1,16 @@
 const puppeteer = require('puppeteer')
+const fs = require('fs')
+const path = require('path')
+
+const TEMPLATE_PATH = path.join(__dirname, '../../templates/Template PDF Presupuesto.png')
 
 const DEFAULT_CONDITIONS = [
   'Condiciones de pago: 30 a 60 días desde la facturación.',
   'Una vez aprobada esta cotización, se deberá enviar Orden de Compra para empezar la producción.',
-  'Se permitirá solo dos cambios por armado por motivos de cambios de guión, o texto. (Las correcciones de guión por exceso de duración de la pieza, serán consideradas como cambio).',
-  'La cantidad de producción o servicios asociada a presupuestos que se consideren paquete o fee mensual tienen un plazo para realizar dicha producción dentro de los días hábiles del mismo mes, por lo que no son acumulables.',
-  'No está autorizado el uso parcial o total de este material en otras piezas comerciales u otros medios de difusión, que no se especifique en esta cotización.',
+  'Se permitirá solo dos cambios por armado por motivos de cambios de guión, o texto.',
+  'La cantidad de producción o servicios asociada a presupuestos que se consideren paquete o fee mensual tienen un plazo para realizar dicha producción dentro de los días hábiles del mismo mes.',
+  'No está autorizado el uso parcial o total de este material en otras piezas comerciales u otros medios de difusión.',
   'Todos los trabajos consideran derechos por 12 meses, salvo que se especifique algo distinto en el detalle de la cotización.',
-  'Los trabajos en producción o terminados, tienen un plazo activo de un máximo de 1 mes desde su fecha de inicio. Cualquier cambio posterior a ese plazo de tiempo, queda afecto a un costo adicional. Así mismo, la publicación o salida al aire de una pieza considera el trabajo como finalizado.',
-  'El inicio de los derechos que contempla cada pieza comienzan a regir desde el momento que se entrega el final, a menos que ambas partes acuerden lo contrario.',
 ]
 
 function fmtMonto(monto, moneda) {
@@ -17,10 +19,10 @@ function fmtMonto(monto, moneda) {
   return `USD ${n.toLocaleString('en-US', { minimumFractionDigits: 2 })}`
 }
 
-function buildHTML(p) {
+function buildHTML(p, templateBase64) {
   const moneda   = p.moneda || 'CLP'
   const descPct  = parseFloat(p.descuento) || 0
-  const subtotal = parseFloat(p.subtotal)  || 0
+  const subtotal = parseFloat(p.subtotal) || 0
   const descMonto = subtotal * (descPct / 100)
   const baseImpon = subtotal - descMonto
   const ivaMonto  = parseFloat(p.impuesto) || 0
@@ -31,318 +33,233 @@ function buildHTML(p) {
     : new Date().toISOString().split('T')[0]
 
   const items = p.items || []
-
-  const detalleHTML = items.length
-    ? items.map(i => `<li>${i.descripcion_personalizada || i.descripcion || '—'}</li>`).join('')
-    : '<li>Sin ítems</li>'
-
-  const condLines = p.condiciones
-    ? p.condiciones.split('\n').filter(l => l.trim())
-    : DEFAULT_CONDITIONS
-  const condHTML = condLines.map(l => `<li>${l.trim()}</li>`).join('')
+  const detalleHTML = items.map(i =>
+    `<li>${i.descripcion_personalizada || i.descripcion || '—'}</li>`
+  ).join('')
 
   const obsLines = p.notas
     ? p.notas.split('\n').filter(l => l.trim()).map(l => `<li>${l.trim()}</li>`).join('')
     : ''
 
+  const pageHeight = 297 // mm A4
+  const pageWidth = 210
+
   return `<!DOCTYPE html>
 <html lang="es">
 <head>
-<meta charset="UTF-8">
-<style>
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body {
-    font-family: 'Segoe UI', Arial, Helvetica, sans-serif;
-    color: #1A1A2E;
-    background: #fff;
-    font-size: 11px;
-    line-height: 1.55;
-  }
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cotización ${p.numero}</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      background: white;
+    }
+    .page {
+      width: ${pageWidth}mm;
+      height: ${pageHeight}mm;
+      position: relative;
+      overflow: hidden;
+      background-image: url('${templateBase64}');
+      background-size: cover;
+      background-position: center;
+      background-repeat: no-repeat;
+    }
+    .overlay {
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+    }
+    .header-data {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      padding: 12mm 15mm 0;
+      gap: 20mm;
+      font-size: 10px;
+      line-height: 1.4;
+    }
+    .header-left { color: #333; }
+    .header-right { text-align: right; color: #333; }
+    .header-label { font-weight: 600; color: #666; font-size: 9px; }
 
-  /* ── HEADER ─────────────────────────────────────────────────────── */
-  .hd {
-    background: #0D0E1C;
-    padding: 22px 40px;
-    display: flex;
-    align-items: center;
-    gap: 0;
-  }
-  .hd-logo {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 0;
-    min-width: 140px;
-  }
-  .hd-logo .circle {
-    width: 52px; height: 52px;
-    border-radius: 50%;
-    border: 3px solid #fff;
-    display: flex; align-items: center; justify-content: center;
-    margin-bottom: 5px;
-    background: transparent;
-  }
-  .hd-logo .circle-inner {
-    width: 28px; height: 28px;
-    border-radius: 50%;
-    border: 2px solid #fff;
-  }
-  .hd-logo .brand {
-    color: #fff;
-    font-size: 13px;
-    font-weight: 800;
-    letter-spacing: 0.12em;
-    line-height: 1.15;
-  }
-  .hd-logo .sub {
-    color: #fff;
-    font-size: 9px;
-    font-weight: 400;
-    letter-spacing: 0.25em;
-    text-transform: uppercase;
-  }
-  .hd-center {
-    flex: 1;
-    text-align: center;
-    color: #fff;
-    font-size: 28px;
-    font-weight: 800;
-    letter-spacing: 0.22em;
-    text-transform: uppercase;
-  }
-  .hd-right {
-    min-width: 140px;
-    text-align: right;
-    color: rgba(255,255,255,0.85);
-    font-size: 10px;
-    line-height: 1.6;
-  }
-  .hd-right .num { font-size: 12px; font-weight: 700; color: #fff; }
+    .numero-fecha {
+      position: absolute;
+      top: 15mm;
+      right: 15mm;
+      text-align: right;
+      font-size: 11px;
+      line-height: 1.5;
+      color: #333;
+    }
+    .numero { font-weight: 700; font-size: 12px; }
 
-  /* ── CONTENT ─────────────────────────────────────────────────────── */
-  .body { padding: 24px 44px 20px; }
+    .proyecto {
+      position: absolute;
+      top: 35mm;
+      left: 15mm;
+      font-size: 10px;
+      line-height: 1.5;
+      color: #333;
+    }
+    .proyecto-label { font-weight: 600; color: #666; font-size: 9px; }
 
-  /* Para / De */
-  .info-block { margin-bottom: 22px; }
-  .info-row   { display: flex; gap: 8px; margin-bottom: 3px; }
-  .info-lbl   { color: #444; font-size: 11px; min-width: 52px; }
-  .info-val   { font-weight: 700; font-size: 11px; color: #1A1A2E; }
+    .detalle {
+      position: absolute;
+      top: 50mm;
+      left: 15mm;
+      right: 15mm;
+      width: calc(100% - 30mm);
+      font-size: 9px;
+      line-height: 1.3;
+      color: #333;
+    }
+    .detalle ul {
+      list-style: none;
+      padding-left: 5mm;
+    }
+    .detalle li { margin-bottom: 2mm; }
+    .detalle li:before { content: "• "; margin-right: 3mm; }
 
-  /* Section headings */
-  .sec-heading {
-    font-size: 11px;
-    font-weight: 700;
-    color: #1A1A2E;
-    border-bottom: 2px solid #1A1A2E;
-    padding-bottom: 4px;
-    margin: 18px 0 10px;
-    text-decoration: none;
-    letter-spacing: 0.02em;
-  }
+    .totales {
+      position: absolute;
+      top: 110mm;
+      right: 15mm;
+      width: 60mm;
+      text-align: right;
+      font-size: 10px;
+      line-height: 2;
+      color: #333;
+    }
+    .total-label { font-weight: 600; color: #666; font-size: 9px; }
+    .total-amount { font-weight: 700; color: #0D0E1C; }
 
-  /* Detalle bullets */
-  ul.detalle {
-    list-style: none; padding: 0; margin: 0 0 8px;
-  }
-  ul.detalle li {
-    padding: 2px 0 2px 14px;
-    position: relative;
-    font-size: 11px;
-    color: #1A1A2E;
-  }
-  ul.detalle li::before { content: '•'; position: absolute; left: 0; }
+    .observaciones {
+      position: absolute;
+      bottom: 40mm;
+      left: 15mm;
+      right: 15mm;
+      width: calc(100% - 30mm);
+      font-size: 9px;
+      line-height: 1.3;
+      color: #333;
+    }
+    .observaciones-label { font-weight: 600; color: #666; font-size: 9px; margin-bottom: 2mm; }
+    .observaciones ul {
+      list-style: none;
+      padding-left: 5mm;
+    }
+    .observaciones li { margin-bottom: 1.5mm; }
+    .observaciones li:before { content: "• "; margin-right: 3mm; }
 
-  /* Totals */
-  .totals-wrap { display: flex; justify-content: flex-end; margin: 14px 0 22px; }
-  .totals-box  { width: 240px; }
-  .t-row {
-    display: flex; justify-content: space-between;
-    padding: 4px 0;
-    font-size: 11px;
-    border-bottom: 1px solid #E0DBD4;
-  }
-  .t-row .lbl { color: #555; }
-  .t-final {
-    display: flex; justify-content: space-between;
-    padding: 9px 0 3px;
-    font-size: 14px; font-weight: 800; color: #1A1A2E;
-    border-top: 2px solid #1A1A2E;
-    margin-top: 2px;
-  }
-
-  /* Dark-bar sections */
-  .ds { margin-bottom: 14px; }
-  .ds-head {
-    background: #1A1A2E;
-    color: #fff;
-    font-size: 10px;
-    font-weight: 700;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    padding: 5px 14px;
-  }
-  .ds-body {
-    background: #F4F4F7;
-    padding: 10px 14px 10px 24px;
-  }
-  .ds-body ul { list-style: disc; padding-left: 0; margin: 0; }
-  .ds-body ul li { font-size: 10px; color: #333; line-height: 1.55; padding: 1px 0; }
-
-  .pago-lead {
-    font-size: 11px; font-weight: 700; color: #1A1A2E;
-    margin-bottom: 6px;
-  }
-
-  /* Company / bank */
-  .company-wrap { text-align: center; margin: 10px 0 6px; }
-  .company-wrap p { font-size: 10px; color: #1A1A2E; line-height: 1.7; }
-  .company-wrap strong { font-weight: 700; font-size: 11px; }
-
-  .divider { height: 3px; background: #1A1A2E; margin: 10px 0; border-radius: 1px; }
-
-  .bank-wrap { text-align: center; margin: 8px 0 14px; }
-  .bank-wrap p { font-size: 10px; color: #444; line-height: 1.7; }
-
-  /* ── FOOTER ─────────────────────────────────────────────────────── */
-  .ft {
-    background: #0D0E1C;
-    padding: 16px 40px;
-    display: flex;
-    align-items: center;
-    gap: 16px;
-    margin-top: 10px;
-  }
-  .ft-logo .circle {
-    width: 38px; height: 38px;
-    border-radius: 50%;
-    border: 2px solid #fff;
-    display: flex; align-items: center; justify-content: center;
-  }
-  .ft-logo .circle-inner {
-    width: 20px; height: 20px;
-    border-radius: 50%;
-    border: 2px solid #fff;
-  }
-  .ft-site {
-    color: #fff;
-    font-size: 12px;
-    font-weight: 700;
-    letter-spacing: 0.05em;
-  }
-
-  .discount { color: #CC0000; }
-</style>
+    .footer {
+      position: absolute;
+      bottom: 5mm;
+      left: 0;
+      right: 0;
+      text-align: center;
+      font-size: 8px;
+      color: #999;
+      padding: 0 15mm;
+    }
+  </style>
 </head>
 <body>
+  <div class="page">
+    <div class="overlay">
+      <div class="header-data">
+        <div class="header-left">
+          <div class="header-label">PARA:</div>
+          <div style="font-weight: 600;">${p.cliente_nombre || '—'}</div>
+          ${p.cliente_empresa ? `<div>${p.cliente_empresa}</div>` : ''}
+          ${p.cliente_email ? `<div>${p.cliente_email}</div>` : ''}
+        </div>
+        <div class="header-right">
+          <div class="numero">N° ${p.numero}</div>
+          <div>${fecha}</div>
+        </div>
+      </div>
 
-<!-- HEADER -->
-<div class="hd">
-  <div class="hd-logo">
-    <div class="circle"><div class="circle-inner"></div></div>
-    <span class="brand">ONYRIA</span>
-    <span class="sub">Studio</span>
-  </div>
-  <div class="hd-center">Cotización</div>
-  <div class="hd-right">
-    <div class="num">N° ${p.numero || '—'}</div>
-    <div>${fecha}</div>
-  </div>
-</div>
+      <div class="numero-fecha"></div>
 
-<!-- BODY -->
-<div class="body">
+      <div class="proyecto">
+        <div class="proyecto-label">PROYECTO:</div>
+        <div style="font-weight: 600; margin-top: 2mm;">${p.nombre_proyecto || '—'}</div>
+        ${p.tipo_proyecto ? `<div style="color: #666; font-size: 9px; margin-top: 1mm;">${p.tipo_proyecto}</div>` : ''}
+      </div>
 
-  <!-- Para / De -->
-  <div class="info-block">
-    <div class="info-row"><span class="info-lbl">Para:</span><span class="info-val">${p.cliente_nombre || ''}</span></div>
-    ${p.cliente_empresa ? `<div class="info-row"><span class="info-lbl">Cliente:</span><span class="info-val">${p.cliente_empresa}</span></div>` : ''}
-    ${p.cliente_email   ? `<div class="info-row"><span class="info-lbl">Mail:</span><span class="info-val">${p.cliente_email}</span></div>`   : ''}
-    <div class="info-row" style="margin-top:6px;"><span class="info-lbl">De:</span><span class="info-val">Carolina Zepeda</span></div>
-    <div class="info-row"><span class="info-lbl">Mail:</span><span class="info-val">carolina@onyria-studio.cl</span></div>
-  </div>
+      <div class="detalle">
+        <div style="font-weight: 600; margin-bottom: 3mm; color: #666; font-size: 9px;">DETALLE:</div>
+        <ul>${detalleHTML || '<li>Sin ítems</li>'}</ul>
+      </div>
 
-  <!-- Proyecto -->
-  <div class="sec-heading">Proyecto:</div>
-  <p style="font-weight:700;font-size:12px;margin-bottom:4px;">${p.nombre_proyecto || '—'}</p>
+      <div class="totales">
+        <div class="total-label">Subtotal</div>
+        <div>${fmtMonto(subtotal, moneda)}</div>
+        ${descPct > 0 ? `
+          <div style="border-top: 1px solid #ddd; padding-top: 2mm; margin-top: 2mm;">
+            <div class="total-label">Descuento (${descPct}%)</div>
+            <div>- ${fmtMonto(descMonto, moneda)}</div>
+            <div class="total-label" style="margin-top: 2mm;">Neto</div>
+            <div>${fmtMonto(baseImpon, moneda)}</div>
+          </div>
+        ` : ''}
+        <div style="border-top: 1px solid #ddd; padding-top: 2mm; margin-top: 2mm;">
+          <div class="total-label">IVA (19%)</div>
+          <div>${fmtMonto(ivaMonto, moneda)}</div>
+          <div class="total-label" style="margin-top: 3mm; font-size: 10px;">TOTAL</div>
+          <div class="total-amount" style="font-size: 14px;">${fmtMonto(totalFinal, moneda)}</div>
+        </div>
+      </div>
 
-  <!-- Detalle -->
-  <div class="sec-heading">Detalle:</div>
-  <ul class="detalle">${detalleHTML}</ul>
+      ${obsLines ? `
+        <div class="observaciones">
+          <div class="observaciones-label">OBSERVACIONES:</div>
+          <ul>${obsLines}</ul>
+        </div>
+      ` : ''}
 
-  <!-- Totales -->
-  <div class="totals-wrap">
-    <div class="totals-box">
-      <div class="t-row"><span class="lbl">Total Neto:</span><span>${fmtMonto(baseImpon, moneda)}</span></div>
-      ${descPct > 0 ? `<div class="t-row"><span class="lbl">Descuento (${descPct}%):</span><span class="discount">- ${fmtMonto(descMonto, moneda)}</span></div>` : ''}
-      <div class="t-row"><span class="lbl">IVA (19%):</span><span>${fmtMonto(ivaMonto, moneda)}</span></div>
-      <div class="t-final"><span>TOTAL:</span><span>${fmtMonto(totalFinal, moneda)}</span></div>
+      <div class="footer">
+        www.onyria-studio.cl
+      </div>
     </div>
   </div>
-
-  <!-- Observaciones -->
-  ${obsLines ? `
-  <div class="ds">
-    <div class="ds-head">Observaciones</div>
-    <div class="ds-body"><ul>${obsLines}</ul></div>
-  </div>` : ''}
-
-  <!-- Forma de Pago -->
-  <div class="ds">
-    <div class="ds-head">Forma de Pago</div>
-    <div class="ds-body">
-      <div class="pago-lead">30 a 60 días</div>
-      <ul>${condHTML}</ul>
-    </div>
-  </div>
-
-  <!-- Empresa -->
-  <div class="company-wrap">
-    <p><strong>Onyria Studio SpA</strong></p>
-    <p>Rut: 77.946.076-2</p>
-    <p>Dirección: Santa Magdalena 75 of 304, Providencia</p>
-  </div>
-
-  <div class="divider"></div>
-
-  <!-- Banco -->
-  <div class="bank-wrap">
-    <p>Banco Santander &ndash; Cta corriente No 0-000-9632329-8</p>
-    <p>Correo: carolina@onyria-studio.cl</p>
-  </div>
-
-</div><!-- /body -->
-
-<!-- FOOTER -->
-<div class="ft">
-  <div class="ft-logo">
-    <div class="circle"><div class="circle-inner"></div></div>
-  </div>
-  <span class="ft-site">www.onyria-studio.cl</span>
-</div>
-
 </body>
 </html>`
 }
 
 async function generarPDF(presupuesto) {
-  let browser
+  if (!fs.existsSync(TEMPLATE_PATH)) {
+    throw new Error('Template PDF no encontrado: ' + TEMPLATE_PATH)
+  }
+
+  // Leer PNG y convertir a base64
+  const pngBuffer = fs.readFileSync(TEMPLATE_PATH)
+  const templateBase64 = `data:image/png;base64,${pngBuffer.toString('base64')}`
+
+  const html = buildHTML(presupuesto, templateBase64)
+
+  const browser = await puppeteer.launch({
+    headless: 'new',
+    args: ['--no-sandbox', '--disable-setuid-sandbox'],
+  })
+
   try {
-    browser = await puppeteer.launch({
-      headless: 'new',
-      args: ['--no-sandbox', '--disable-setuid-sandbox'],
-    })
     const page = await browser.newPage()
-    await page.setContent(buildHTML(presupuesto), { waitUntil: 'domcontentloaded' })
+    await page.setContent(html, { waitUntil: 'networkidle2' })
+    await page.setViewport({ width: 794, height: 1123 }) // A4 at 96dpi
 
-    const pdfBuffer = await page.pdf({
+    const pdf = await page.pdf({
       format: 'A4',
-      printBackground: true,
       margin: { top: '0', right: '0', bottom: '0', left: '0' },
+      printBackground: true,
     })
 
-    return pdfBuffer
+    return pdf
   } finally {
-    if (browser) await browser.close()
+    await browser.close()
   }
 }
 
