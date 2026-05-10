@@ -4,15 +4,6 @@ const path = require('path')
 
 const TEMPLATE_PATH = path.join(__dirname, '../../templates/Template PDF Presupuesto.png')
 
-const DEFAULT_CONDITIONS = [
-  'Condiciones de pago: 30 a 60 días desde la facturación.',
-  'Una vez aprobada esta cotización, se deberá enviar Orden de Compra para empezar la producción.',
-  'Se permitirá solo dos cambios por armado por motivos de cambios de guión, o texto.',
-  'La cantidad de producción o servicios asociada a presupuestos que se consideren paquete o fee mensual tienen un plazo para realizar dicha producción dentro de los días hábiles del mismo mes.',
-  'No está autorizado el uso parcial o total de este material en otras piezas comerciales u otros medios de difusión.',
-  'Todos los trabajos consideran derechos por 12 meses, salvo que se especifique algo distinto en el detalle de la cotización.',
-]
-
 function fmtMonto(monto, moneda) {
   const n = parseFloat(monto) || 0
   if (moneda === 'CLP') return `$${Math.round(n).toLocaleString('es-CL')}`
@@ -20,211 +11,116 @@ function fmtMonto(monto, moneda) {
 }
 
 function buildHTML(p, templateBase64) {
-  const moneda   = p.moneda || 'CLP'
-  const descPct  = parseFloat(p.descuento) || 0
-  const subtotal = parseFloat(p.subtotal) || 0
+  const moneda    = p.moneda || 'CLP'
+  const subtotal  = parseFloat(p.subtotal) || 0
+  const descPct   = parseFloat(p.descuento) || 0
   const descMonto = subtotal * (descPct / 100)
   const baseImpon = subtotal - descMonto
   const ivaMonto  = parseFloat(p.impuesto) || 0
-  const totalFinal = p.ajuste_total != null ? parseFloat(p.ajuste_total) : parseFloat(p.total) || 0
+  const totalFinal = p.ajuste_total != null ? parseFloat(p.ajuste_total) : (parseFloat(p.total) || 0)
 
   const fecha = p.fecha_emision
     ? new Date(p.fecha_emision).toISOString().split('T')[0]
     : new Date().toISOString().split('T')[0]
 
   const items = p.items || []
-  const detalleHTML = items.map(i =>
-    `<li>${i.descripcion_personalizada || i.descripcion || '—'}</li>`
-  ).join('')
-
-  const obsLines = p.notas
-    ? p.notas.split('\n').filter(l => l.trim()).map(l => `<li>${l.trim()}</li>`).join('')
-    : ''
-
-  const pageHeight = 297 // mm A4
-  const pageWidth = 210
+  const detalleHTML = items.map(i => {
+    const desc = i.descripcion_personalizada || i.descripcion || '—'
+    const cant = parseFloat(i.cantidad) || 1
+    const sub  = parseFloat(i.subtotal) || (cant * (parseFloat(i.precio_unitario) || 0))
+    return `
+      <div class="item-row">
+        <div class="item-desc">• ${desc}${cant > 1 ? `<span class="qty"> × ${cant}</span>` : ''}</div>
+        <div class="item-amount">${fmtMonto(sub, moneda)}</div>
+      </div>`
+  }).join('')
 
   return `<!DOCTYPE html>
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Cotización ${p.numero}</title>
   <style>
+    @page { size: A4; margin: 0; }
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-      background: white;
-    }
+    body { font-family: 'DM Sans', Arial, sans-serif; color: #0D0E1C; }
     .page {
-      width: ${pageWidth}mm;
-      height: ${pageHeight}mm;
+      width: 210mm;
+      height: 297mm;
+      background: url('${templateBase64}') no-repeat center / 210mm 297mm;
       position: relative;
       overflow: hidden;
-      background-image: url('${templateBase64}');
-      background-size: cover;
-      background-position: center;
-      background-repeat: no-repeat;
     }
-    .overlay {
-      position: absolute;
-      width: 100%;
-      height: 100%;
+    .abs { position: absolute; }
+    .bold { font-weight: 700; }
+
+    /* Bloque Para */
+    .cliente   { left: 33mm; top: 41mm; font-size: 10pt; font-weight: 700; width: 95mm; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .mail-c    { left: 33mm; top: 47mm; font-size: 10pt; width: 95mm; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .de        { left: 33mm; top: 53mm; font-size: 10pt; font-weight: 700; }
+    .mail-d    { left: 33mm; top: 59mm; font-size: 10pt; }
+
+    /* Número y fecha */
+    .num-bloque { left: 135mm; top: 41mm; width: 60mm; }
+    .num-bloque .lbl   { font-size: 9pt; color: #666; }
+    .num-bloque .num   { font-weight: 700; font-size: 11pt; }
+    .num-bloque .fecha { font-size: 9pt; color: #666; margin-top: 2px; }
+    .num-bloque .val   { font-size: 8pt; color: #888; }
+
+    /* Proyecto */
+    .proyecto      { left: 33mm; top: 75mm; font-size: 10.5pt; font-weight: 700; width: 160mm; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .proyecto-tipo { left: 33mm; top: 80mm; font-size: 9pt; color: #555; }
+
+    /* Detalle */
+    .detalle { left: 18mm; top: 92mm; width: 174mm; max-height: 60mm; overflow: hidden; }
+    .item-row {
       display: flex;
-      flex-direction: column;
-    }
-    .header-data {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      padding: 12mm 15mm 0;
-      gap: 20mm;
-      font-size: 10px;
-      line-height: 1.4;
-    }
-    .header-left { color: #333; }
-    .header-right { text-align: right; color: #333; }
-    .header-label { font-weight: 600; color: #666; font-size: 9px; }
-
-    .numero-fecha {
-      position: absolute;
-      top: 15mm;
-      right: 15mm;
-      text-align: right;
-      font-size: 11px;
+      justify-content: space-between;
+      gap: 8px;
+      font-size: 9pt;
       line-height: 1.5;
-      color: #333;
+      padding-bottom: 1px;
     }
-    .numero { font-weight: 700; font-size: 12px; }
+    .item-desc { flex: 1; min-width: 0; }
+    .item-desc .qty { color: #888; }
+    .item-amount { color: #444; white-space: nowrap; }
 
-    .proyecto {
-      position: absolute;
-      top: 35mm;
-      left: 15mm;
-      font-size: 10px;
-      line-height: 1.5;
-      color: #333;
-    }
-    .proyecto-label { font-weight: 600; color: #666; font-size: 9px; }
+    /* Totales (alineado al $ del template) */
+    .totales      { left: 140mm; top: 162mm; width: 55mm; text-align: right; }
+    .total-neto   { font-size: 10pt; line-height: 1.85; font-weight: 600; }
+    .total-iva    { font-size: 10pt; line-height: 1.85; font-weight: 600; }
+    .total-grand  { font-size: 11pt; line-height: 1.85; font-weight: 700; }
 
-    .detalle {
-      position: absolute;
-      top: 50mm;
-      left: 15mm;
-      right: 15mm;
-      width: calc(100% - 30mm);
-      font-size: 9px;
-      line-height: 1.3;
-      color: #333;
-    }
-    .detalle ul {
-      list-style: none;
-      padding-left: 5mm;
-    }
-    .detalle li { margin-bottom: 2mm; }
-    .detalle li:before { content: "• "; margin-right: 3mm; }
-
-    .totales {
-      position: absolute;
-      top: 110mm;
-      right: 15mm;
-      width: 60mm;
-      text-align: right;
-      font-size: 10px;
-      line-height: 2;
-      color: #333;
-    }
-    .total-label { font-weight: 600; color: #666; font-size: 9px; }
-    .total-amount { font-weight: 700; color: #0D0E1C; }
-
-    .observaciones {
-      position: absolute;
-      bottom: 40mm;
-      left: 15mm;
-      right: 15mm;
-      width: calc(100% - 30mm);
-      font-size: 9px;
-      line-height: 1.3;
-      color: #333;
-    }
-    .observaciones-label { font-weight: 600; color: #666; font-size: 9px; margin-bottom: 2mm; }
-    .observaciones ul {
-      list-style: none;
-      padding-left: 5mm;
-    }
-    .observaciones li { margin-bottom: 1.5mm; }
-    .observaciones li:before { content: "• "; margin-right: 3mm; }
-
-    .footer {
-      position: absolute;
-      bottom: 5mm;
-      left: 0;
-      right: 0;
-      text-align: center;
-      font-size: 8px;
-      color: #999;
-      padding: 0 15mm;
-    }
+    /* Motivo de ajuste */
+    .ajuste-motivo { left: 18mm; top: 187mm; width: 174mm; font-size: 8pt; color: #666; font-style: italic; }
   </style>
 </head>
 <body>
   <div class="page">
-    <div class="overlay">
-      <div class="header-data">
-        <div class="header-left">
-          <div class="header-label">PARA:</div>
-          <div style="font-weight: 600;">${p.cliente_nombre || '—'}</div>
-          ${p.cliente_empresa ? `<div>${p.cliente_empresa}</div>` : ''}
-          ${p.cliente_email ? `<div>${p.cliente_email}</div>` : ''}
-        </div>
-        <div class="header-right">
-          <div class="numero">N° ${p.numero}</div>
-          <div>${fecha}</div>
-        </div>
-      </div>
+    <div class="abs cliente">${p.cliente_nombre || ''}</div>
+    <div class="abs mail-c">${p.cliente_email || ''}</div>
+    <div class="abs de">Onyria Studio</div>
+    <div class="abs mail-d">contacto@onyria-studio.cl</div>
 
-      <div class="numero-fecha"></div>
-
-      <div class="proyecto">
-        <div class="proyecto-label">PROYECTO:</div>
-        <div style="font-weight: 600; margin-top: 2mm;">${p.nombre_proyecto || '—'}</div>
-        ${p.tipo_proyecto ? `<div style="color: #666; font-size: 9px; margin-top: 1mm;">${p.tipo_proyecto}</div>` : ''}
-      </div>
-
-      <div class="detalle">
-        <div style="font-weight: 600; margin-bottom: 3mm; color: #666; font-size: 9px;">DETALLE:</div>
-        <ul>${detalleHTML || '<li>Sin ítems</li>'}</ul>
-      </div>
-
-      <div class="totales">
-        <div class="total-label">Subtotal</div>
-        <div>${fmtMonto(subtotal, moneda)}</div>
-        ${descPct > 0 ? `
-          <div style="border-top: 1px solid #ddd; padding-top: 2mm; margin-top: 2mm;">
-            <div class="total-label">Descuento (${descPct}%)</div>
-            <div>- ${fmtMonto(descMonto, moneda)}</div>
-            <div class="total-label" style="margin-top: 2mm;">Neto</div>
-            <div>${fmtMonto(baseImpon, moneda)}</div>
-          </div>
-        ` : ''}
-        <div style="border-top: 1px solid #ddd; padding-top: 2mm; margin-top: 2mm;">
-          <div class="total-label">IVA (19%)</div>
-          <div>${fmtMonto(ivaMonto, moneda)}</div>
-          <div class="total-label" style="margin-top: 3mm; font-size: 10px;">TOTAL</div>
-          <div class="total-amount" style="font-size: 14px;">${fmtMonto(totalFinal, moneda)}</div>
-        </div>
-      </div>
-
-      ${obsLines ? `
-        <div class="observaciones">
-          <div class="observaciones-label">OBSERVACIONES:</div>
-          <ul>${obsLines}</ul>
-        </div>
-      ` : ''}
-
-      <div class="footer">
-        www.onyria-studio.cl
-      </div>
+    <div class="abs num-bloque">
+      <div class="lbl">N° Cotización</div>
+      <div class="num">${p.numero}</div>
+      <div class="fecha">Fecha: ${fecha}</div>
+      <div class="val">Validez: ${p.validez_dias || 30} días</div>
     </div>
+
+    <div class="abs proyecto">${p.nombre_proyecto || ''}</div>
+    ${p.tipo_proyecto ? `<div class="abs proyecto-tipo">${p.tipo_proyecto.replace(/_/g, ' ')}</div>` : ''}
+
+    <div class="abs detalle">${detalleHTML}</div>
+
+    <div class="abs totales">
+      <div class="total-neto">${fmtMonto(baseImpon, moneda)}</div>
+      <div class="total-iva">${fmtMonto(ivaMonto, moneda)}</div>
+      <div class="total-grand">${fmtMonto(totalFinal, moneda)}</div>
+    </div>
+
+    ${p.ajuste_motivo ? `<div class="abs ajuste-motivo">Ajuste de total: ${p.ajuste_motivo}</div>` : ''}
   </div>
 </body>
 </html>`
@@ -235,7 +131,6 @@ async function generarPDF(presupuesto) {
     throw new Error('Template PDF no encontrado: ' + TEMPLATE_PATH)
   }
 
-  // Leer PNG y convertir a base64
   const pngBuffer = fs.readFileSync(TEMPLATE_PATH)
   const templateBase64 = `data:image/png;base64,${pngBuffer.toString('base64')}`
 
@@ -249,12 +144,12 @@ async function generarPDF(presupuesto) {
   try {
     const page = await browser.newPage()
     await page.setContent(html, { waitUntil: 'networkidle2' })
-    await page.setViewport({ width: 794, height: 1123 }) // A4 at 96dpi
 
     const pdf = await page.pdf({
       format: 'A4',
       margin: { top: '0', right: '0', bottom: '0', left: '0' },
       printBackground: true,
+      preferCSSPageSize: true,
     })
 
     return pdf
