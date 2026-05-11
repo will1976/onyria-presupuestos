@@ -125,17 +125,17 @@ function buildHTML(p, templateBase64) {
     }
     .detalle-wrap ul li { padding-left: 1mm; }
 
-    /* Observaciones (notas para el cliente) — sobre el header del template */
+    /* Observaciones (notas para el cliente) — debajo del header del template */
     .observaciones {
-      position: absolute; left: 22mm; right: 18mm; top: 187mm;
-      font-size: 9pt; line-height: 1.4; color: #0E2A38;
+      position: absolute; left: 22mm; right: 18mm; top: 178mm;
+      font-size: 7.5pt; line-height: 1.35; color: #0E2A38;
     }
     .observaciones ul {
       list-style: disc;
-      padding-left: 5mm;
+      padding-left: 4mm;
       margin: 0;
     }
-    .observaciones li { padding-left: 1mm; margin-bottom: 1mm; }
+    .observaciones li { padding-left: 1mm; margin-bottom: 0.6mm; }
 
     /* Totales (lado derecho, debajo del detalle) */
     .totales {
