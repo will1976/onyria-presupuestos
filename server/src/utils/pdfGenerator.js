@@ -78,9 +78,9 @@ function buildHTML(p, templateBase64) {
     /* Bloque "Para" + Cliente + Mail + De + Mail */
     .info-cliente {
       position: absolute; left: 18mm; top: 42mm;
-      font-size: 10pt; line-height: 1.55;
+      font-size: 10pt; line-height: 1.2;
     }
-    .info-cliente .row { margin-bottom: 1mm; }
+    .info-cliente .row { margin-bottom: 0; }
     .info-cliente .row strong { font-weight: 700; }
 
     /* Proyecto */
@@ -91,7 +91,7 @@ function buildHTML(p, templateBase64) {
     .proyecto-wrap .pname { font-weight: 700; margin-bottom: 4mm; }
     .proyecto-wrap hr {
       border: none;
-      border-top: 2px solid #0E4561;
+      border-top: 4px solid #0E4561;
       margin-top: 1mm;
     }
 

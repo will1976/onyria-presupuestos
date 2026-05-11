@@ -62,13 +62,13 @@ export function PDFPreview({ form, items, ajuste }) {
       {/* Bloque Cliente */}
       <div style={{
         position: 'absolute', left: '18mm', top: '42mm',
-        fontSize: '10pt', lineHeight: 1.55,
+        fontSize: '10pt', lineHeight: 1.2,
       }}>
-        <div style={{ marginBottom: '1mm' }}>Para: <strong>{form.cliente || ''}</strong></div>
-        <div style={{ marginBottom: '1mm' }}>Cliente: <strong>{form.empresa || ''}</strong></div>
-        <div style={{ marginBottom: '1mm' }}>Mail: <strong>{form.email_cliente || ''}</strong></div>
-        <div style={{ marginBottom: '1mm' }}>De: <strong>Carolina Zepeda</strong></div>
-        <div style={{ marginBottom: '1mm' }}>Mail: <strong>carolina@onyria-studio.cl</strong></div>
+        <div>Para: <strong>{form.cliente || ''}</strong></div>
+        <div>Cliente: <strong>{form.empresa || ''}</strong></div>
+        <div>Mail: <strong>{form.email_cliente || ''}</strong></div>
+        <div>De: <strong>Carolina Zepeda</strong></div>
+        <div>Mail: <strong>carolina@onyria-studio.cl</strong></div>
       </div>
 
       {/* Proyecto */}
@@ -77,7 +77,7 @@ export function PDFPreview({ form, items, ajuste }) {
         fontSize: '10pt',
       }}>
         <div>Proyecto: <span style={{ fontWeight: 700 }}>{form.nombre_proyecto || ''}</span></div>
-        <hr style={{ border: 'none', borderTop: '2px solid #0E4561', marginTop: '1mm' }} />
+        <hr style={{ border: 'none', borderTop: '4px solid #0E4561', marginTop: '1mm' }} />
       </div>
 
       {/* Detalle */}
