@@ -1,15 +1,29 @@
 import { formatMonto } from '../theme'
 
 // Coordenadas en mm, calzadas sobre Template PDF Presupuesto.png (A4 210x297mm)
-// El template ya tiene impresos los labels: Para, Cliente, Mail, De, Proyecto,
-// Detalle, Total Neto, IVA (19%), TOTAL, Observaciones, Forma de Pago, footer.
-// Solo se rellenan los valores junto a cada label.
+// Los labels del template (Para, Cliente, Mail, De, Proyecto, Detalle, Total Neto,
+// IVA, TOTAL, Observaciones, Forma de Pago) ya están impresos en la imagen.
 
-const COL_LABEL_X = 33   // Columna donde empiezan los valores del bloque "Para"
-const ROW_CLIENTE = 41
-const ROW_MAIL_C  = 47
-const ROW_DE      = 53
-const ROW_MAIL_D  = 59
+const COL_VALUE_X = 33    // Columna donde empiezan los valores del bloque "Para"
+const ROW_CLIENTE = 39    // y posición de cada fila (spacing ~4mm)
+const ROW_MAIL_C  = 43
+const ROW_DE      = 47
+const ROW_MAIL_D  = 51
+
+const ROW_PROYECTO      = 60
+const ROW_PROYECTO_TIPO = 65
+const ROW_DETALLE       = 73
+
+const ROW_TOT_NETO  = 144
+const ROW_TOT_IVA   = 151
+const ROW_TOT_FINAL = 158
+
+// Formato sin "$" porque el template ya trae "$"
+function fmtNum(n, moneda) {
+  const num = parseFloat(n) || 0
+  if (moneda === 'CLP') return `${Math.round(num).toLocaleString('es-CL')} CLP`
+  return `${num.toLocaleString('en-US', { minimumFractionDigits: 2 })} USD`
+}
 
 export function PDFPreview({ form, items, ajuste }) {
   const subtotal       = items.reduce((s, i) => s + i.cantidad * i.precioUnitario, 0)
@@ -35,41 +49,41 @@ export function PDFPreview({ form, items, ajuste }) {
       backgroundRepeat: 'no-repeat',
       position: 'relative',
       overflow: 'hidden',
-      fontSize: '10pt',
+      fontSize: '9pt',
     }}>
-      {/* ─── Bloque Para (top-left, junto a labels del template) ─── */}
-      <Field x={COL_LABEL_X} y={ROW_CLIENTE} value={form.cliente} bold />
-      <Field x={COL_LABEL_X} y={ROW_MAIL_C}  value={form.email_cliente} />
-      <Field x={COL_LABEL_X} y={ROW_DE}      value="Onyria Studio" bold />
-      <Field x={COL_LABEL_X} y={ROW_MAIL_D}  value="contacto@onyria-studio.cl" />
+      {/* ─── Bloque Para ─── */}
+      <Field x={COL_VALUE_X} y={ROW_CLIENTE} value={form.cliente} bold />
+      <Field x={COL_VALUE_X} y={ROW_MAIL_C}  value={form.email_cliente} />
+      <Field x={COL_VALUE_X} y={ROW_DE}      value="Onyria Studio" bold />
+      <Field x={COL_VALUE_X} y={ROW_MAIL_D}  value="contacto@onyria-studio.cl" />
 
       {/* ─── Número y fecha (top-right) ─── */}
-      <div style={absStyle(135, 41, 60)}>
-        <div style={{ fontSize: '9pt', color: '#666' }}>N° Cotización</div>
+      <div style={absStyle(135, ROW_CLIENTE, 60)}>
+        <div style={{ fontSize: '8pt', color: '#666' }}>N° Cotización</div>
         <div style={{ fontWeight: 700, fontSize: '11pt' }}>{form.numero}</div>
-        <div style={{ fontSize: '9pt', color: '#666', marginTop: 2 }}>Fecha: {form.fecha}</div>
+        <div style={{ fontSize: '8pt', color: '#666', marginTop: 2 }}>Fecha: {form.fecha}</div>
         <div style={{ fontSize: '8pt', color: '#888' }}>Validez: {form.validez} días</div>
       </div>
 
       {/* ─── Proyecto ─── */}
-      <Field x={COL_LABEL_X} y={75} value={form.nombre_proyecto} bold size="10.5pt" />
+      <Field x={COL_VALUE_X} y={ROW_PROYECTO}      value={form.nombre_proyecto} bold size="10pt" width={160} />
       {form.tipo_proyecto && (
-        <Field x={COL_LABEL_X} y={80} value={form.tipo_proyecto.replace(/_/g, ' ')} size="9pt" color="#555" />
+        <Field x={COL_VALUE_X} y={ROW_PROYECTO_TIPO} value={form.tipo_proyecto.replace(/_/g, ' ')} size="8pt" color="#555" width={160} />
       )}
 
       {/* ─── Detalle (items) ─── */}
-      <div style={{ ...absStyle(18, 92, 174), maxHeight: 60, overflow: 'hidden' }}>
-        {items.map((i, idx) => (
+      <div style={{ ...absStyle(18, ROW_DETALLE, 174), maxHeight: 65, overflow: 'hidden' }}>
+        {items.filter(i => i.descripcion?.trim()).map((i, idx) => (
           <div key={idx} style={{
             display: 'flex',
             justifyContent: 'space-between',
             gap: 8,
             fontSize: '9pt',
-            lineHeight: 1.5,
+            lineHeight: 1.4,
             paddingBottom: 1,
           }}>
             <div style={{ flex: 1, minWidth: 0 }}>
-              <span style={{ color: '#0D0E1C' }}>• {i.descripcion || '—'}</span>
+              <span>• {i.descripcion}</span>
               {i.cantidad > 1 && <span style={{ color: '#888' }}> × {i.cantidad}</span>}
             </div>
             <div style={{ color: '#444', whiteSpace: 'nowrap' }}>{fmt(i.cantidad * i.precioUnitario)}</div>
@@ -77,22 +91,20 @@ export function PDFPreview({ form, items, ajuste }) {
         ))}
       </div>
 
-      {/* ─── Totales (alineados al "$" del template) ─── */}
-      <div style={{ ...absStyle(140, 162, 55), textAlign: 'right' }}>
-        <div style={{ fontSize: '10pt', lineHeight: 1.85, fontWeight: 600, color: '#0D0E1C' }}>
-          {fmt(subtotal - descuentoMonto)}
-        </div>
-        <div style={{ fontSize: '10pt', lineHeight: 1.85, fontWeight: 600, color: '#0D0E1C' }}>
-          {fmt(ivaMonto)}
-        </div>
-        <div style={{ fontSize: '11pt', lineHeight: 1.85, fontWeight: 700, color: '#0D0E1C' }}>
-          {fmt(totalFinal)}
-        </div>
+      {/* ─── Totales (alineados al "$" del template, lado derecho) ─── */}
+      <div style={{ ...absStyle(155, ROW_TOT_NETO, 40), textAlign: 'right', fontSize: '9pt', fontWeight: 600 }}>
+        {fmtNum(baseImponible, form.moneda)}
+      </div>
+      <div style={{ ...absStyle(155, ROW_TOT_IVA, 40), textAlign: 'right', fontSize: '9pt', fontWeight: 600 }}>
+        {fmtNum(ivaMonto, form.moneda)}
+      </div>
+      <div style={{ ...absStyle(155, ROW_TOT_FINAL, 40), textAlign: 'right', fontSize: '10pt', fontWeight: 700 }}>
+        {fmtNum(totalFinal, form.moneda)}
       </div>
 
       {/* ─── Motivo de ajuste (si aplica) ─── */}
       {ajuste?.activo && ajuste?.motivo && (
-        <div style={{ ...absStyle(18, 187, 174), fontSize: '8pt', color: '#666', fontStyle: 'italic' }}>
+        <div style={{ ...absStyle(18, 167, 130), fontSize: '7.5pt', color: '#666', fontStyle: 'italic' }}>
           Ajuste de total: {ajuste.motivo}
         </div>
       )}
@@ -109,7 +121,7 @@ function absStyle(xMm, yMm, wMm) {
   }
 }
 
-function Field({ x, y, value, bold, size = '10pt', color = '#0D0E1C', width = 100 }) {
+function Field({ x, y, value, bold, size = '9pt', color = '#0D0E1C', width = 100 }) {
   if (!value) return null
   return (
     <div style={{
