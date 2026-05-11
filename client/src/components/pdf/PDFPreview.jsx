@@ -109,7 +109,7 @@ export function PDFPreview({ form, items, ajuste }) {
       {/* Observaciones (notas para el cliente) */}
       {form.notas && (
         <div style={{
-          position: 'absolute', left: '22mm', right: '18mm', top: '178mm',
+          position: 'absolute', left: '22mm', right: '18mm', top: '182mm',
           fontSize: '7.5pt', lineHeight: 1.35, color: '#0E2A38',
         }}>
           <ul style={{ listStyle: 'disc', paddingLeft: '4mm', margin: 0 }}>

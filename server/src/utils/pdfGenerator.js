@@ -127,7 +127,7 @@ function buildHTML(p, templateBase64) {
 
     /* Observaciones (notas para el cliente) — debajo del header del template */
     .observaciones {
-      position: absolute; left: 22mm; right: 18mm; top: 178mm;
+      position: absolute; left: 22mm; right: 18mm; top: 182mm;
       font-size: 7.5pt; line-height: 1.35; color: #0E2A38;
     }
     .observaciones ul {
