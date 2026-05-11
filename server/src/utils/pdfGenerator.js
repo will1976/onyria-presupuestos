@@ -29,9 +29,19 @@ function buildHTML(p, templateBase64) {
   const subtotal  = parseFloat(p.subtotal) || 0
   const descPct   = parseFloat(p.descuento) || 0
   const descMonto = subtotal * (descPct / 100)
-  const baseImpon = subtotal - descMonto
-  const ivaMonto  = parseFloat(p.impuesto) || 0
-  const totalFinal = p.ajuste_total != null ? parseFloat(p.ajuste_total) : (parseFloat(p.total) || 0)
+
+  // Si hay ajuste: el ajuste_total ES el nuevo Total Neto
+  // IVA = ajuste * 0.19, TOTAL = ajuste * 1.19
+  let baseImpon, ivaMonto, totalFinal
+  if (p.ajuste_total != null) {
+    baseImpon  = parseFloat(p.ajuste_total)
+    ivaMonto   = baseImpon * 0.19
+    totalFinal = baseImpon + ivaMonto
+  } else {
+    baseImpon  = subtotal - descMonto
+    ivaMonto   = parseFloat(p.impuesto) || 0
+    totalFinal = parseFloat(p.total) || 0
+  }
 
   const items = (p.items || []).filter(i => (i.descripcion_personalizada || i.descripcion))
   const detalleHTML = items.map(i => {
@@ -125,11 +135,6 @@ function buildHTML(p, templateBase64) {
     }
     .totales .tot-final { font-size: 12pt; }
 
-    /* Motivo de ajuste */
-    .ajuste-motivo {
-      position: absolute; left: 18mm; right: 18mm; top: 170mm;
-      font-size: 8pt; color: #666; font-style: italic;
-    }
   </style>
 </head>
 <body>
@@ -161,8 +166,6 @@ function buildHTML(p, templateBase64) {
       <div>IVA (19%): ${fmtMonto(ivaMonto, moneda)}</div>
       <div class="tot-final">TOTAL: ${fmtMonto(totalFinal, moneda)}</div>
     </div>
-
-    ${p.ajuste_motivo ? `<div class="ajuste-motivo">Ajuste de total: ${p.ajuste_motivo}</div>` : ''}
 
   </div>
 </body>

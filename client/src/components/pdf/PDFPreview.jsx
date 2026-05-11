@@ -22,12 +22,14 @@ function fmtNumero(n) {
 export function PDFPreview({ form, items, ajuste }) {
   const subtotal       = items.reduce((s, i) => s + i.cantidad * i.precioUnitario, 0)
   const descuentoMonto = subtotal * (parseFloat(form.descuento || 0) / 100)
-  const baseImponible  = subtotal - descuentoMonto
-  const ivaMonto       = baseImponible * (parseFloat(form.iva || 19) / 100)
-  const totalCalculado = baseImponible + ivaMonto
-  const totalFinal     = ajuste?.activo && ajuste?.total !== '' && ajuste?.total != null
-    ? parseFloat(ajuste.total) || 0
-    : totalCalculado
+  const ivaPct         = parseFloat(form.iva || 19) / 100
+
+  // Si hay ajuste: el valor ingresado es el nuevo Total Neto
+  // IVA y TOTAL se recalculan con base en ese Total Neto
+  const ajusteActivo = ajuste?.activo && ajuste?.total !== '' && ajuste?.total != null
+  const baseImponible  = ajusteActivo ? (parseFloat(ajuste.total) || 0) : (subtotal - descuentoMonto)
+  const ivaMonto       = baseImponible * ivaPct
+  const totalFinal     = baseImponible + ivaMonto
 
   const validItems = items.filter(i => i.descripcion?.trim())
 
@@ -115,15 +117,6 @@ export function PDFPreview({ form, items, ajuste }) {
         <div style={{ fontSize: '12pt' }}>TOTAL: {fmtMonto(totalFinal, form.moneda)}</div>
       </div>
 
-      {/* Motivo del ajuste */}
-      {ajuste?.activo && ajuste?.motivo && (
-        <div style={{
-          position: 'absolute', left: '18mm', right: '18mm', top: '170mm',
-          fontSize: '8pt', color: '#666', fontStyle: 'italic',
-        }}>
-          Ajuste de total: {ajuste.motivo}
-        </div>
-      )}
     </div>
   )
 }
