@@ -13,13 +13,14 @@ export const TEXT_DIM    = '#6E6A82'
 
 // ── Domain Constants ──────────────────────────────────────────────────────
 export const CATEGORIAS = [
-  { id: 'sonorizacion',    label: 'Sonorización / Post / Mix', color: '#C9A84C' },
-  { id: 'locucion',        label: 'Locución',                  color: '#00D4FF' },
-  { id: 'musica_original', label: 'Música Original',           color: '#A855F7' },
-  { id: 'musica_archivo',  label: 'Música Archivo',            color: '#22C55E' },
-  { id: 'casting',         label: 'Casting',                   color: '#F97316' },
-  { id: 'podcast',         label: 'Podcast',                   color: '#EC4899' },
-  { id: 'otro',            label: 'Otro',                      color: '#94A3B8' },
+  { id: 'Estudio',                label: 'Estudio',                color: '#C9A84C' },
+  { id: 'Locutor',                label: 'Locutor',                color: '#00D4FF' },
+  { id: 'musica_original',        label: 'Música Original',        color: '#A855F7' },
+  { id: 'musica_archivo',         label: 'Música Archivo',         color: '#22C55E' },
+  { id: 'renovacion_derecho',     label: 'Renovación Derechos',    color: '#F59E0B' },
+  { id: 'Personajes - Doblajes',  label: 'Personajes / Doblajes',  color: '#F97316' },
+  { id: 'podcast',                label: 'Podcast',                color: '#EC4899' },
+  { id: 'otro',                   label: 'Otro',                   color: '#94A3B8' },
 ]
 
 export const ESTADOS = {
