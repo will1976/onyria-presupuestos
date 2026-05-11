@@ -125,6 +125,18 @@ function buildHTML(p, templateBase64) {
     }
     .detalle-wrap ul li { padding-left: 1mm; }
 
+    /* Observaciones (notas para el cliente) — sobre el header del template */
+    .observaciones {
+      position: absolute; left: 22mm; right: 18mm; top: 187mm;
+      font-size: 9pt; line-height: 1.4; color: #0E2A38;
+    }
+    .observaciones ul {
+      list-style: disc;
+      padding-left: 5mm;
+      margin: 0;
+    }
+    .observaciones li { padding-left: 1mm; margin-bottom: 1mm; }
+
     /* Totales (lado derecho, debajo del detalle) */
     .totales {
       position: absolute; right: 18mm; top: 145mm;
@@ -166,6 +178,10 @@ function buildHTML(p, templateBase64) {
       <div>IVA (19%): ${fmtMonto(ivaMonto, moneda)}</div>
       <div class="tot-final">TOTAL: ${fmtMonto(totalFinal, moneda)}</div>
     </div>
+
+    ${p.notas ? `<div class="observaciones">
+      <ul>${p.notas.split('\n').filter(l => l.trim()).map(l => `<li>${l.trim()}</li>`).join('')}</ul>
+    </div>` : ''}
 
   </div>
 </body>

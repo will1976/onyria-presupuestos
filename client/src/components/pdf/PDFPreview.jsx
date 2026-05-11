@@ -106,6 +106,20 @@ export function PDFPreview({ form, items, ajuste }) {
         </ul>
       </div>
 
+      {/* Observaciones (notas para el cliente) */}
+      {form.notas && (
+        <div style={{
+          position: 'absolute', left: '22mm', right: '18mm', top: '187mm',
+          fontSize: '9pt', lineHeight: 1.4, color: '#0E2A38',
+        }}>
+          <ul style={{ listStyle: 'disc', paddingLeft: '5mm', margin: 0 }}>
+            {form.notas.split('\n').filter(l => l.trim()).map((l, i) => (
+              <li key={i} style={{ paddingLeft: '1mm', marginBottom: '1mm' }}>{l.trim()}</li>
+            ))}
+          </ul>
+        </div>
+      )}
+
       {/* Totales */}
       <div style={{
         position: 'absolute', right: '18mm', top: '145mm',
