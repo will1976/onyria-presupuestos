@@ -11,6 +11,7 @@ const MIGRATIONS = [
   '005_seed_servicios.sql',
   '006_ajuste_total.sql',
   '007_porcentaje_boleta.sql',
+  '008_reset_y_recargar_catalogo.sql',
 ]
 
 async function migrate() {
