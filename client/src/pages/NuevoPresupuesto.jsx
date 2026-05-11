@@ -25,6 +25,8 @@ Todos los trabajos consideran derechos por 12 meses, salvo que se especifique al
 Los trabajos en producción o terminados, tienen un plazo activo de un máximo de 1 mes desde su fecha de inicio. Cualquier cambio posterior a ese plazo de tiempo, queda afecto a un costo adicional. Así mismo, la publicación o salida al aire de una pieza considera el trabajo como finalizado.
 El inicio de los derechos que contempla cada pieza comienzan a regir desde el momento que se entrega el final, a menos que ambas partes acuerden lo contrario.`
 
+const DEFAULT_NOTAS = 'Locución solo puede usarse en armado cotizado, su uso en otras piezas o medios debe ser cotizado como adicional.'
+
 function makeItem() {
   return {
     id: Date.now() + Math.random(),
@@ -196,7 +198,7 @@ export default function NuevoPresupuesto({ datosIA, editandoId, addToast }) {
     moneda:          'CLP',
     descuento:       '0',
     iva:             '19',
-    notas:           '',
+    notas:           DEFAULT_NOTAS,
     condiciones:     DEFAULT_CONDITIONS,
   })
 
@@ -540,7 +542,7 @@ export default function NuevoPresupuesto({ datosIA, editandoId, addToast }) {
       numero: `ONY-${new Date().getFullYear()}-${String(Math.floor(Math.random() * 900) + 100)}`,
       fecha: new Date().toISOString().split('T')[0],
       validez: '30', moneda: 'CLP', descuento: '0', iva: '19',
-      notas: '', condiciones: DEFAULT_CONDITIONS,
+      notas: DEFAULT_NOTAS, condiciones: DEFAULT_CONDITIONS,
     })
     setItems([makeItem()])
     setErrors({})
