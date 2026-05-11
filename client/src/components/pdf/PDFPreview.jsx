@@ -37,7 +37,7 @@ export function PDFPreview({ form, items, ajuste }) {
       height: '297mm',
       margin: '0 auto',
       background: '#FFFFFF',
-      color:  '#1a1a2e',
+      color:  '#1F5773',
       fontFamily: 'DM Sans, Arial, sans-serif',
       backgroundImage: 'url(/template-presupuesto.png)',
       backgroundSize: '210mm 297mm',
@@ -64,28 +64,28 @@ export function PDFPreview({ form, items, ajuste }) {
         position: 'absolute', left: '18mm', top: '42mm',
         fontSize: '10pt', lineHeight: 1.2,
       }}>
-        <div>Para: <strong>{form.cliente || ''}</strong></div>
-        <div>Cliente: <strong>{form.empresa || ''}</strong></div>
-        <div>Mail: <strong>{form.email_cliente || ''}</strong></div>
-        <div>De: <strong>Carolina Zepeda</strong></div>
-        <div>Mail: <strong>carolina@onyria-studio.cl</strong></div>
+        <div>Para: <strong style={{ color: '#0E2A38' }}>{form.cliente || ''}</strong></div>
+        <div>Cliente: <strong style={{ color: '#0E2A38' }}>{form.empresa || ''}</strong></div>
+        <div>Mail: <strong style={{ color: '#0E2A38' }}>{form.email_cliente || ''}</strong></div>
+        <div>De: <strong style={{ color: '#0E2A38' }}>Carolina Zepeda</strong></div>
+        <div>Mail: <strong style={{ color: '#0E2A38' }}>carolina@onyria-studio.cl</strong></div>
       </div>
 
       {/* Proyecto */}
       <div style={{
-        position: 'absolute', left: '18mm', right: '18mm', top: '78mm',
+        position: 'absolute', left: '18mm', right: '18mm', top: '68mm',
         fontSize: '10pt',
       }}>
-        <div>Proyecto: <span style={{ fontWeight: 700 }}>{form.nombre_proyecto || ''}</span></div>
+        <div>Proyecto: <span style={{ fontWeight: 700, color: '#0E2A38' }}>{form.nombre_proyecto || ''}</span></div>
         <hr style={{ border: 'none', borderTop: '4px solid #0E4561', marginTop: '1mm' }} />
       </div>
 
       {/* Detalle */}
       <div style={{
-        position: 'absolute', left: '18mm', right: '90mm', top: '92mm',
+        position: 'absolute', left: '18mm', right: '90mm', top: '80mm',
         fontSize: '10pt',
       }}>
-        <div style={{ fontWeight: 700, textDecoration: 'underline', marginBottom: '3mm' }}>Detalle:</div>
+        <div style={{ fontWeight: 700, textDecoration: 'underline', marginBottom: '3mm', color: '#0E2A38' }}>Detalle:</div>
         <ul style={{ listStyle: 'disc', paddingLeft: '5mm', lineHeight: 1.7 }}>
           {validItems.map((i, idx) => {
             const cant = i.cantidad > 1 ? `${i.cantidad} ` : ''
@@ -108,7 +108,7 @@ export function PDFPreview({ form, items, ajuste }) {
       <div style={{
         position: 'absolute', right: '18mm', top: '145mm',
         fontSize: '10pt', lineHeight: 1.9,
-        textAlign: 'right', fontWeight: 700,
+        textAlign: 'right', fontWeight: 700, color: '#0E2A38',
       }}>
         <div>Total Neto: {fmtMonto(baseImponible, form.moneda)}</div>
         <div>IVA (19%): {fmtMonto(ivaMonto, form.moneda)}</div>

@@ -53,7 +53,8 @@ function buildHTML(p, templateBase64) {
   <style>
     @page { size: A4; margin: 0; }
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { font-family: 'DM Sans', Arial, sans-serif; color: #1a1a2e; font-size: 10pt; }
+    body { font-family: 'DM Sans', Arial, sans-serif; color: #1F5773; font-size: 10pt; }
+    strong { color: #0E2A38; font-weight: 700; }
     .page {
       width: 210mm;
       height: 297mm;
@@ -85,10 +86,10 @@ function buildHTML(p, templateBase64) {
 
     /* Proyecto */
     .proyecto-wrap {
-      position: absolute; left: 18mm; right: 18mm; top: 78mm;
+      position: absolute; left: 18mm; right: 18mm; top: 68mm;
       font-size: 10pt;
     }
-    .proyecto-wrap .pname { font-weight: 700; margin-bottom: 4mm; }
+    .proyecto-wrap .pname { font-weight: 700; margin-bottom: 4mm; color: #0E2A38; }
     .proyecto-wrap hr {
       border: none;
       border-top: 4px solid #0E4561;
@@ -97,10 +98,10 @@ function buildHTML(p, templateBase64) {
 
     /* Detalle */
     .detalle-wrap {
-      position: absolute; left: 18mm; right: 90mm; top: 92mm;
+      position: absolute; left: 18mm; right: 90mm; top: 80mm;
       font-size: 10pt;
     }
-    .detalle-wrap .lbl { font-weight: 700; text-decoration: underline; margin-bottom: 3mm; }
+    .detalle-wrap .lbl { font-weight: 700; text-decoration: underline; margin-bottom: 3mm; color: #0E2A38; }
     .detalle-wrap ul {
       list-style: disc;
       padding-left: 5mm;
@@ -120,6 +121,7 @@ function buildHTML(p, templateBase64) {
       font-size: 10pt; line-height: 1.9;
       text-align: right;
       font-weight: 700;
+      color: #0E2A38;
     }
     .totales .tot-final { font-size: 12pt; }
 
