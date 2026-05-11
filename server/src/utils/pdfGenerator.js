@@ -169,24 +169,47 @@ function buildHTML(p, templateBase64) {
 </html>`
 }
 
-async function generarPDF(presupuesto) {
+// Cache del template (se lee una sola vez por proceso)
+let cachedTemplateBase64 = null
+function getTemplateBase64() {
+  if (cachedTemplateBase64) return cachedTemplateBase64
   if (!fs.existsSync(TEMPLATE_PATH)) {
     throw new Error('Template PDF no encontrado: ' + TEMPLATE_PATH)
   }
-
   const pngBuffer = fs.readFileSync(TEMPLATE_PATH)
-  const templateBase64 = `data:image/png;base64,${pngBuffer.toString('base64')}`
+  cachedTemplateBase64 = `data:image/png;base64,${pngBuffer.toString('base64')}`
+  return cachedTemplateBase64
+}
 
-  const html = buildHTML(presupuesto, templateBase64)
+// Browser de Puppeteer reutilizado entre requests
+let browserPromise = null
+function getBrowser() {
+  if (!browserPromise) {
+    browserPromise = puppeteer.launch({
+      headless: 'new',
+      args: [
+        '--no-sandbox',
+        '--disable-setuid-sandbox',
+        '--disable-dev-shm-usage',
+        '--disable-gpu',
+      ],
+    })
+    // Si el browser se cae, resetear el cache para que se relance
+    browserPromise.then(b => {
+      b.on('disconnected', () => { browserPromise = null })
+    }).catch(() => { browserPromise = null })
+  }
+  return browserPromise
+}
 
-  const browser = await puppeteer.launch({
-    headless: 'new',
-    args: ['--no-sandbox', '--disable-setuid-sandbox'],
-  })
+async function generarPDF(presupuesto) {
+  const t0 = Date.now()
+  const html = buildHTML(presupuesto, getTemplateBase64())
 
+  const browser = await getBrowser()
+  const page = await browser.newPage()
   try {
-    const page = await browser.newPage()
-    await page.setContent(html, { waitUntil: 'networkidle2' })
+    await page.setContent(html, { waitUntil: 'domcontentloaded' })
 
     const pdf = await page.pdf({
       format: 'A4',
@@ -195,9 +218,10 @@ async function generarPDF(presupuesto) {
       preferCSSPageSize: true,
     })
 
+    console.log(`PDF generado en ${Date.now() - t0}ms (${presupuesto.numero})`)
     return pdf
   } finally {
-    await browser.close()
+    await page.close()
   }
 }
 
