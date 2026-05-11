@@ -4,18 +4,24 @@ const path = require('path')
 
 const TEMPLATE_PATH = path.join(__dirname, '../../templates/Template PDF Presupuesto.png')
 
-// Formato sin "$" porque el template ya trae "$" al final de cada label
-function fmtNum(monto, moneda) {
-  const n = parseFloat(monto) || 0
-  if (moneda === 'CLP') return `${Math.round(n).toLocaleString('es-CL')} CLP`
-  return `${n.toLocaleString('en-US', { minimumFractionDigits: 2 })} USD`
-}
-
-// Formato con "$" para los items del detalle
 function fmtMonto(monto, moneda) {
   const n = parseFloat(monto) || 0
-  if (moneda === 'CLP') return `$${Math.round(n).toLocaleString('es-CL')}`
+  if (moneda === 'CLP') return `$ ${Math.round(n).toLocaleString('es-CL')}`
   return `USD ${n.toLocaleString('en-US', { minimumFractionDigits: 2 })}`
+}
+
+function fmtFechaLarga(fechaIso) {
+  const d = fechaIso ? new Date(fechaIso) : new Date()
+  const dias   = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado']
+  const meses  = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre']
+  return `${dias[d.getDay()]}, ${d.getDate()} de ${meses[d.getMonth()]} de ${d.getFullYear()}`
+}
+
+function fmtNumero(n) {
+  // ONY-2026-842 → 004451 (intenta extraer dígitos y mostrar 6)
+  if (!n) return ''
+  const digits = String(n).replace(/\D/g, '')
+  return digits.padStart(6, '0')
 }
 
 function buildHTML(p, templateBase64) {
@@ -27,20 +33,16 @@ function buildHTML(p, templateBase64) {
   const ivaMonto  = parseFloat(p.impuesto) || 0
   const totalFinal = p.ajuste_total != null ? parseFloat(p.ajuste_total) : (parseFloat(p.total) || 0)
 
-  const fecha = p.fecha_emision
-    ? new Date(p.fecha_emision).toISOString().split('T')[0]
-    : new Date().toISOString().split('T')[0]
-
   const items = (p.items || []).filter(i => (i.descripcion_personalizada || i.descripcion))
   const detalleHTML = items.map(i => {
     const desc = i.descripcion_personalizada || i.descripcion
     const cant = parseFloat(i.cantidad) || 1
-    const sub  = parseFloat(i.subtotal) || (cant * (parseFloat(i.precio_unitario) || 0))
-    return `
-      <div class="item-row">
-        <div class="item-desc">• ${desc}${cant > 1 ? `<span class="qty"> × ${cant}</span>` : ''}</div>
-        <div class="item-amount">${fmtMonto(sub, moneda)}</div>
-      </div>`
+    const cantTxt = cant > 1 ? `${cant} ` : ''
+    const notas = (i.notas || '').split(/[·•]/).map(s => s.trim()).filter(Boolean)
+    const subBullets = notas.length
+      ? `<ul class="sub">${notas.map(n => `<li>${n}</li>`).join('')}</ul>`
+      : ''
+    return `<li>${cantTxt}${desc}${subBullets}</li>`
   }).join('')
 
   return `<!DOCTYPE html>
@@ -51,7 +53,7 @@ function buildHTML(p, templateBase64) {
   <style>
     @page { size: A4; margin: 0; }
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { font-family: 'DM Sans', Arial, sans-serif; color: #0D0E1C; font-size: 9pt; }
+    body { font-family: 'DM Sans', Arial, sans-serif; color: #1a1a2e; font-size: 10pt; }
     .page {
       width: 210mm;
       height: 297mm;
@@ -60,72 +62,106 @@ function buildHTML(p, templateBase64) {
       overflow: hidden;
     }
     .abs { position: absolute; }
-    .ellipsis { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
-    /* Bloque Para — spacing 4mm */
-    .cliente   { left: 33mm; top: 39mm; font-weight: 700; width: 95mm; }
-    .mail-c    { left: 33mm; top: 43mm; width: 95mm; }
-    .de        { left: 33mm; top: 47mm; font-weight: 700; }
-    .mail-d    { left: 33mm; top: 51mm; }
+    /* N° y fecha sobre el banner (top-right, blanco sobre fondo oscuro) */
+    .num-cot {
+      position: absolute; right: 12mm; top: 13mm;
+      color: #FFFFFF; font-size: 13pt; font-weight: 700; letter-spacing: 0.5px;
+      text-align: right;
+    }
+    .fecha-cot {
+      position: absolute; right: 12mm; top: 22mm;
+      color: #FFFFFF; font-size: 9pt; opacity: 0.95;
+      text-align: right;
+    }
 
-    /* Número y fecha (top-right) */
-    .num-bloque { left: 135mm; top: 39mm; width: 60mm; }
-    .num-bloque .lbl   { font-size: 8pt; color: #666; }
-    .num-bloque .num   { font-weight: 700; font-size: 11pt; }
-    .num-bloque .fecha { font-size: 8pt; color: #666; margin-top: 2px; }
-    .num-bloque .val   { font-size: 8pt; color: #888; }
+    /* Bloque "Para" + Cliente + Mail + De + Mail */
+    .info-cliente {
+      position: absolute; left: 18mm; top: 42mm;
+      font-size: 10pt; line-height: 1.55;
+    }
+    .info-cliente .row { margin-bottom: 1mm; }
+    .info-cliente .row strong { font-weight: 700; }
 
     /* Proyecto */
-    .proyecto      { left: 33mm; top: 60mm; font-size: 10pt; font-weight: 700; width: 160mm; }
-    .proyecto-tipo { left: 33mm; top: 65mm; font-size: 8pt; color: #555; }
+    .proyecto-wrap {
+      position: absolute; left: 18mm; right: 18mm; top: 78mm;
+      font-size: 10pt;
+    }
+    .proyecto-wrap .pname { font-weight: 700; margin-bottom: 4mm; }
+    .proyecto-wrap hr {
+      border: none;
+      border-top: 2px solid #0E4561;
+      margin-top: 1mm;
+    }
 
     /* Detalle */
-    .detalle { left: 18mm; top: 73mm; width: 174mm; max-height: 65mm; overflow: hidden; }
-    .item-row {
-      display: flex;
-      justify-content: space-between;
-      gap: 8px;
-      font-size: 9pt;
-      line-height: 1.4;
-      padding-bottom: 1px;
+    .detalle-wrap {
+      position: absolute; left: 18mm; right: 90mm; top: 92mm;
+      font-size: 10pt;
     }
-    .item-desc { flex: 1; min-width: 0; }
-    .item-desc .qty { color: #888; }
-    .item-amount { color: #444; white-space: nowrap; }
+    .detalle-wrap .lbl { font-weight: 700; text-decoration: underline; margin-bottom: 3mm; }
+    .detalle-wrap ul {
+      list-style: disc;
+      padding-left: 5mm;
+      line-height: 1.7;
+    }
+    .detalle-wrap ul.sub {
+      list-style: circle;
+      padding-left: 6mm;
+      margin-top: 0.5mm;
+      line-height: 1.5;
+    }
+    .detalle-wrap ul li { padding-left: 1mm; }
 
-    /* Totales (lado derecho, alineados al $ del template) */
-    .tot-neto  { left: 155mm; top: 144mm; width: 40mm; text-align: right; font-size: 9pt; font-weight: 600; }
-    .tot-iva   { left: 155mm; top: 151mm; width: 40mm; text-align: right; font-size: 9pt; font-weight: 600; }
-    .tot-final { left: 155mm; top: 158mm; width: 40mm; text-align: right; font-size: 10pt; font-weight: 700; }
+    /* Totales (lado derecho, debajo del detalle) */
+    .totales {
+      position: absolute; right: 18mm; top: 145mm;
+      font-size: 10pt; line-height: 1.9;
+      text-align: right;
+      font-weight: 700;
+    }
+    .totales .tot-final { font-size: 12pt; }
 
     /* Motivo de ajuste */
-    .ajuste-motivo { left: 18mm; top: 167mm; width: 130mm; font-size: 7.5pt; color: #666; font-style: italic; }
+    .ajuste-motivo {
+      position: absolute; left: 18mm; right: 18mm; top: 170mm;
+      font-size: 8pt; color: #666; font-style: italic;
+    }
   </style>
 </head>
 <body>
   <div class="page">
-    <div class="abs cliente ellipsis">${p.cliente_nombre || ''}</div>
-    <div class="abs mail-c ellipsis">${p.cliente_email || ''}</div>
-    <div class="abs de">Onyria Studio</div>
-    <div class="abs mail-d">contacto@onyria-studio.cl</div>
 
-    <div class="abs num-bloque">
-      <div class="lbl">N° Cotización</div>
-      <div class="num">${p.numero}</div>
-      <div class="fecha">Fecha: ${fecha}</div>
-      <div class="val">Validez: ${p.validez_dias || 30} días</div>
+    <div class="num-cot">N° ${fmtNumero(p.numero)}</div>
+    <div class="fecha-cot">${fmtFechaLarga(p.fecha_emision)}</div>
+
+    <div class="info-cliente">
+      <div class="row">Para: <strong>${p.cliente_nombre || ''}</strong></div>
+      <div class="row">Cliente: <strong>${p.cliente_empresa || ''}</strong></div>
+      <div class="row">Mail: <strong>${p.cliente_email || ''}</strong></div>
+      <div class="row">De: <strong>Carolina Zepeda</strong></div>
+      <div class="row">Mail: <strong>carolina@onyria-studio.cl</strong></div>
     </div>
 
-    <div class="abs proyecto ellipsis">${p.nombre_proyecto || ''}</div>
-    ${p.tipo_proyecto ? `<div class="abs proyecto-tipo">${p.tipo_proyecto.replace(/_/g, ' ')}</div>` : ''}
+    <div class="proyecto-wrap">
+      <div>Proyecto: <span class="pname">${p.nombre_proyecto || ''}</span></div>
+      <hr/>
+    </div>
 
-    <div class="abs detalle">${detalleHTML}</div>
+    <div class="detalle-wrap">
+      <div class="lbl">Detalle:</div>
+      <ul>${detalleHTML}</ul>
+    </div>
 
-    <div class="abs tot-neto">${fmtNum(baseImpon, moneda)}</div>
-    <div class="abs tot-iva">${fmtNum(ivaMonto, moneda)}</div>
-    <div class="abs tot-final">${fmtNum(totalFinal, moneda)}</div>
+    <div class="totales">
+      <div>Total Neto: ${fmtMonto(baseImpon, moneda)}</div>
+      <div>IVA (19%): ${fmtMonto(ivaMonto, moneda)}</div>
+      <div class="tot-final">TOTAL: ${fmtMonto(totalFinal, moneda)}</div>
+    </div>
 
-    ${p.ajuste_motivo ? `<div class="abs ajuste-motivo">Ajuste de total: ${p.ajuste_motivo}</div>` : ''}
+    ${p.ajuste_motivo ? `<div class="ajuste-motivo">Ajuste de total: ${p.ajuste_motivo}</div>` : ''}
+
   </div>
 </body>
 </html>`
