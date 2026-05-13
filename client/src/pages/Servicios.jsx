@@ -16,7 +16,18 @@ const UNIDADES_VALIDAS   = ['por pieza','por minuto','por hora','por episodio','
 
 const CAT_OPTIONS  = CATEGORIAS.map(c => ({ value: c.id, label: c.label }))
 const UNIT_OPTIONS = UNIDADES.map(u => ({ value: u, label: u }))
-const EMPTY = { nombre: '', categoria: 'sonorizacion', descripcion: '', precio_base: 0, unidad: 'por pieza', moneda: 'CLP', activo: true, porcentaje_boleta: 0 }
+const EMPTY = {
+  nombre: '', categoria: 'sonorizacion', descripcion: '',
+  precio_base: 0, unidad: 'por pieza', moneda: 'CLP', activo: true, porcentaje_boleta: 0,
+  // Metadata semántica para el pipeline IA v2
+  aliases: '', tags: '', casos_uso: '', no_aplica: '', subcategoria: '',
+}
+
+// Convierte aliases/tags (que vienen como array JSON desde la BD) a CSV para el textarea
+function toCsv(val) {
+  if (Array.isArray(val)) return val.join(', ')
+  return val || ''
+}
 
 // ── Column definitions ─────────────────────────────────────────────────────
 const COLS = [
@@ -116,7 +127,19 @@ export default function Servicios({ addToast }) {
 
   const setField = (k, v) => setForm(f => ({ ...f, [k]: v }))
   function openCrear()    { setForm(EMPTY);    setErrors({}); setModal({ mode: 'crear' }) }
-  function openEditar(s)  { setForm({ ...s }); setErrors({}); setModal({ mode: 'editar', id: s.id }) }
+  function openEditar(s)  {
+    setForm({
+      ...EMPTY,
+      ...s,
+      aliases:      toCsv(s.aliases),
+      tags:         toCsv(s.tags),
+      casos_uso:    s.casos_uso    || '',
+      no_aplica:    s.no_aplica    || '',
+      subcategoria: s.subcategoria || '',
+    })
+    setErrors({})
+    setModal({ mode: 'editar', id: s.id })
+  }
 
   function validate() {
     const e = {}
@@ -579,6 +602,43 @@ export default function Servicios({ addToast }) {
             <Input label="Nombre del Servicio *" value={form.nombre} onChange={v => setField('nombre', v)} error={errors.nombre} />
             <Select label="Categoría" value={form.categoria} onChange={v => setField('categoria', v)} options={CAT_OPTIONS} />
             <Textarea label="Descripción" value={form.descripcion} onChange={v => setField('descripcion', v)} rows={3} />
+
+            {/* ── Metadata semántica (mejora precisión del pipeline IA) ── */}
+            <Input
+              label="Subcategoría"
+              value={form.subcategoria}
+              onChange={v => setField('subcategoria', v)}
+              placeholder="Ej: Locución Comercial"
+            />
+            <Textarea
+              label="Aliases / Sinónimos"
+              value={form.aliases}
+              onChange={v => setField('aliases', v)}
+              placeholder="casting voces, audiciones, locutores"
+              rows={2}
+            />
+            <Textarea
+              label="Tags"
+              value={form.tags}
+              onChange={v => setField('tags', v)}
+              placeholder="radio, tv, publicidad, comercial"
+              rows={2}
+            />
+            <Textarea
+              label="Casos de uso"
+              value={form.casos_uso}
+              onChange={v => setField('casos_uso', v)}
+              placeholder="Selección de voces para campañas comerciales y contenido digital"
+              rows={2}
+            />
+            <Textarea
+              label="No aplica para"
+              value={form.no_aplica}
+              onChange={v => setField('no_aplica', v)}
+              placeholder="doblaje, mezcla, masterización"
+              rows={2}
+            />
+
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
               <Input label="Precio Base" type="number" value={form.precio_base} onChange={v => setField('precio_base', parseFloat(v) || 0)} onFocus={e => e.target.select()} />
               <Select label="Moneda" value={form.moneda} onChange={v => setField('moneda', v)} options={MONEDAS} />

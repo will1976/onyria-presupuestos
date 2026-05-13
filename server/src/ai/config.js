@@ -33,6 +33,9 @@ module.exports = {
     topK:                parseInt(process.env.TOP_K_CANDIDATES, 10)    || 5,
     autoSelectThreshold: parseFloat(process.env.AUTO_SELECT_THRESHOLD) || 0.85,
     suggestThreshold:    parseFloat(process.env.SUGGEST_THRESHOLD)     || 0.60,
+    // Multiplicador aplicado al similarity_score de servicios cuya categoría
+    // coincide con la detectada por la IA. 1.0 = sin boost. Recomendado 1.10-1.25.
+    categoryBoost:       parseFloat(process.env.CATEGORY_BOOST_MULTIPLIER) || 1.15,
   },
   flags: {
     useNewPipeline: process.env.USE_NEW_AI_PIPELINE === 'true',

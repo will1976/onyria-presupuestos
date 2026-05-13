@@ -22,23 +22,28 @@ const log = makeLogger('search')
 /**
  * @param {string} text
  * @param {object} [opts]
- * @param {string} [opts.categoria]     Si se pasa, filtra candidatos por esta categoría
+ * @param {string} [opts.categoria]      Si se pasa, aplica boost a esa categoría
+ * @param {boolean}[opts.hardFilter]     Si true, descarta candidatos de otras categorías
+ *                                       (sólo si hay >= 3 en la categoría); por defecto false
  * @param {number} [opts.topK]
  * @param {number} [opts.threshold]
- * @returns {Promise<Array<{id:string, nombre:string, categoria:string, descripcion:string, precio_base:number, similarity_score:number, [k:string]:any}>>}
+ * @param {number} [opts.boost]          Override del multiplicador de boost
+ * @returns {Promise<Array<{id:string, nombre:string, categoria:string, descripcion:string, precio_base:number, similarity_score:number, base_score:number, boosted:boolean, [k:string]:any}>>}
  */
 async function findRelevantServices(text, opts = {}) {
   const topK      = opts.topK      ?? config.search.topK
   const threshold = opts.threshold ?? config.search.threshold
+  const boostMult = opts.boost     ?? config.search.categoryBoost
 
   // 1. Embedding del query
   const queryVec = await embeddingsAdapter.generateEmbedding(text)
 
-  // 2. Cargar candidatos con embedding (filtrar por categoría si aplica)
+  // 2. Cargar candidatos con embedding
   let candidatos = serviciosRepo.listarConEmbedding()
-  if (opts.categoria) {
+
+  // Filtro duro opcional (sólo si hay suficientes en esa categoría)
+  if (opts.categoria && opts.hardFilter) {
     const filtered = candidatos.filter(s => s.categoria === opts.categoria)
-    // Si filtrar por categoría deja muy pocos candidatos, ampliar al total
     candidatos = filtered.length >= Math.min(topK, 3) ? filtered : candidatos
   }
 
@@ -47,19 +52,37 @@ async function findRelevantServices(text, opts = {}) {
     return []
   }
 
-  // 3. & 4. Cosine + top K
-  const scored = topKBySimilarity(queryVec, candidatos, { topK, threshold })
+  // 3. Cosine similarity sin filtrar
+  const scoredAll = topKBySimilarity(queryVec, candidatos, {
+    topK: candidatos.length,  // primero scoreamos todos
+    threshold,
+  })
 
-  return scored.map(({ item, score }) => ({
+  // 4. Aplicar boost por categoría (clamped a 1.0 max para mantener escala)
+  const finalScored = scoredAll.map(({ item, score }) => {
+    const sameCategoria = opts.categoria && item.categoria === opts.categoria
+    const boosted = sameCategoria && boostMult > 1
+    const final   = boosted ? Math.min(1, score * boostMult) : score
+    return { item, base_score: score, score: final, boosted }
+  })
+
+  // 5. Reordenar por score final y truncar
+  finalScored.sort((a, b) => b.score - a.score)
+  const top = finalScored.slice(0, topK)
+
+  return top.map(({ item, score, base_score, boosted }) => ({
     id:                item.id,
     nombre:            item.nombre,
     categoria:         item.categoria,
+    subcategoria:      item.subcategoria,
     descripcion:       item.descripcion,
     precio_base:       item.precio_base,
     porcentaje_boleta: item.porcentaje_boleta,
     moneda:            item.moneda,
     unidad:            item.unidad,
     similarity_score:  score,
+    base_score,
+    boosted,
   }))
 }
 

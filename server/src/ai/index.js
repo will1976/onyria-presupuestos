@@ -14,7 +14,7 @@ const { findRelevantServices }            = require('./services/search.service')
 const { extractStructuredIntent }         = require('./services/intent.service')
 const { normalizeUserInput }              = require('./services/normalizer.service')
 const { validateAndSelect }               = require('./services/validator.service')
-const { generateServiceEmbeddings }       = require('./jobs/generateServiceEmbeddings')
+const { generateServiceEmbeddings, rebuildAllEmbeddings } = require('./jobs/generateServiceEmbeddings')
 const { embeddingsAdapter }               = require('./adapters/embeddings.adapter')
 const { groqAdapter }                     = require('./adapters/groq.adapter')
 const config                              = require('./config')
@@ -30,6 +30,7 @@ module.exports = {
   validateAndSelect,
   // Jobs
   generateServiceEmbeddings,
+  rebuildAllEmbeddings,
   // Adapters (avanzado)
   embeddingsAdapter,
   groqAdapter,
