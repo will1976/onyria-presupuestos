@@ -87,8 +87,12 @@ class BaseRepository {
     const conds  = []
     const params = []
     for (const [k, v] of Object.entries(where)) {
-      if (v === null) { conds.push(`${k} IS NULL`) }
-      else            { conds.push(`${k} = ?`); params.push(v) }
+      if (v === null) {
+        conds.push(`${k} IS NULL`)
+      } else {
+        conds.push(`${k} = ?`)
+        params.push(this.booleanFields.has(k) ? (v ? 1 : 0) : v)
+      }
     }
     let sql = `SELECT COUNT(*) AS c FROM ${this.table}`
     if (conds.length) sql += ' WHERE ' + conds.join(' AND ')
