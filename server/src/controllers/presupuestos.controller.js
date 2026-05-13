@@ -68,34 +68,38 @@ async function listar(req, res, next) {
 // ── GET /api/presupuestos/metricas ─────────────────────────────────────────
 async function metricas(req, res, next) {
   try {
-    // Counts by estado
+    // Counts by estado (mes actual) — SQLite usa strftime
     const { rows: estados } = await query(`
       SELECT estado, COUNT(*) AS count
       FROM presupuestos
-      WHERE DATE_TRUNC('month', created_at) = DATE_TRUNC('month', NOW())
+      WHERE strftime('%Y-%m', created_at) = strftime('%Y-%m', 'now')
       GROUP BY estado
     `)
 
-    // Totals CLP / USD this month
+    // Totals CLP / USD del mes
     const { rows: totales } = await query(`
-      SELECT
-        moneda,
-        SUM(total) AS total_suma
+      SELECT moneda, SUM(total) AS total_suma
       FROM presupuestos
-      WHERE DATE_TRUNC('month', created_at) = DATE_TRUNC('month', NOW())
+      WHERE strftime('%Y-%m', created_at) = strftime('%Y-%m', 'now')
       GROUP BY moneda
     `)
 
-    // Last 6 months CLP
+    // Últimos 6 meses CLP — agrupado por YYYY-MM
     const { rows: chart } = await query(`
       SELECT
-        TO_CHAR(DATE_TRUNC('month', created_at), 'Mon') AS mes,
+        strftime('%Y-%m', created_at) AS mes_key,
         SUM(CASE WHEN moneda = 'CLP' THEN total ELSE 0 END) AS total
       FROM presupuestos
-      WHERE created_at >= NOW() - INTERVAL '6 months'
-      GROUP BY DATE_TRUNC('month', created_at)
-      ORDER BY DATE_TRUNC('month', created_at)
+      WHERE created_at >= date('now', '-6 months')
+      GROUP BY mes_key
+      ORDER BY mes_key
     `)
+
+    const mesesEs = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic']
+    const chartFmt = chart.map(r => {
+      const [, mm] = (r.mes_key || '').split('-')
+      return { mes: mesesEs[parseInt(mm, 10) - 1] || r.mes_key, total: parseFloat(r.total) }
+    })
 
     const porEstado = {}
     let totalMes = 0
@@ -117,7 +121,7 @@ async function metricas(req, res, next) {
         rechazados: porEstado.rechazado || 0,
         pendientes: porEstado.enviado   || 0,
         por_estado: porEstado,
-        chart:      chart.map(r => ({ mes: r.mes, total: parseFloat(r.total) })),
+        chart:      chartFmt,
       },
     })
   } catch (err) { next(err) }

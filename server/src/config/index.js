@@ -1,4 +1,5 @@
 require('dotenv').config()
+const path = require('path')
 
 const config = {
   port:       process.env.PORT       || 3001,
@@ -6,7 +7,10 @@ const config = {
   clientUrl:  process.env.CLIENT_URL || 'http://localhost:5173',
 
   db: {
-    url: process.env.DATABASE_URL,
+    // Ruta del archivo SQLite. Por defecto se guarda en server/data/onyria.db
+    file: process.env.DB_PATH || path.join(__dirname, '../../data/onyria.db'),
+    // PRAGMA settings
+    verbose: process.env.DB_VERBOSE === 'true',
   },
 
   jwt: {
@@ -26,8 +30,8 @@ const config = {
   },
 }
 
-// Warn about missing critical env vars
-const required = ['DATABASE_URL', 'JWT_SECRET', 'GEMINI_API_KEY']
+// Warn about missing critical env vars (DATABASE_URL ya no es requerido)
+const required = ['JWT_SECRET']
 required.forEach(key => {
   if (!process.env[key]) {
     console.warn(`⚠  [config] Missing env var: ${key}`)

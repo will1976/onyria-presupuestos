@@ -10,7 +10,7 @@
     "dev": "concurrently \"npm run dev:server\" \"npm run dev:client\"",
     "dev:local": "concurrently \"npm run dev:server:local\" \"npm run dev:client\"",
     "dev:server": "npm run dev --workspace=server",
-    "dev:server:local": "cross-env PORT=3001 NODE_ENV=development DATABASE_URL=postgresql://postgres:postgres@localhost:5432/onyria_presupuestos npm run dev --workspace=server",
+    "dev:server:local": "cross-env PORT=3001 NODE_ENV=development npm run dev --workspace=server",
     "dev:client": "npm run dev --workspace=client",
     "install:all": "npm install && npm install --workspace=client && npm install --workspace=server",
     "db:migrate": "npm run migrate --workspace=server",

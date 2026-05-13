@@ -15,6 +15,12 @@ client/dist/
 *.log
 npm-debug.log*
 
+# SQLite local DB files
+server/data/
+*.db
+*.db-shm
+*.db-wal
+
 # OS
 .DS_Store
 Thumbs.db
