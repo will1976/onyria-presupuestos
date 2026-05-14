@@ -68,9 +68,9 @@
       font-size: 10pt;
     }
 
-    .detalle ul { list-style: disc; padding-left: 5mm; line-height: 1.7; }
+    .detalle ul { list-style: disc; padding-left: 5mm; line-height: 1.55; font-size: 8.5pt; }
     .detalle ul li { padding-left: 1mm; page-break-inside: avoid; }
-    .detalle ul ul { list-style: circle; padding-left: 6mm; margin: 0.5mm 0 1mm; line-height: 1.5; }
+    .detalle ul ul { list-style: circle; padding-left: 6mm; margin: 0.5mm 0 1mm; line-height: 1.4; font-size: 8pt; }
 
     /* ── Totales ──────────────────────────────────────────────────── */
     .totales-wrap {
@@ -99,32 +99,51 @@
     .section-bar {
       background: #0E4561;
       color: #FFFFFF;
-      padding: 2mm 4mm;
+      padding: 1.5mm 4mm;
       font-weight: 700;
-      font-size: 9.5pt;
+      font-size: 8pt;
       letter-spacing: 0.3px;
-      margin-bottom: 2.5mm;
+      margin-bottom: 2mm;
     }
 
     .observaciones ul,
     .condiciones ul {
       list-style: disc;
       padding-left: 5mm;
-      font-size: 8.5pt;
-      line-height: 1.45;
+      font-size: 7.5pt;
+      line-height: 1.35;
       color: #0E2A38;
     }
     .observaciones ul li,
     .condiciones ul li {
-      margin-bottom: 1mm;
+      margin-bottom: 0.6mm;
       padding-left: 1mm;
     }
 
     .forma-pago .fp-text {
-      font-size: 9pt;
+      font-size: 8pt;
       color: #0E2A38;
       padding: 0 1mm;
     }
+
+    /* ── Bloque de datos de empresa (al pie del contenido) ─────────── */
+    .empresa-info {
+      margin-top: 6mm;
+      page-break-inside: avoid;
+      text-align: center;
+      color: #0E2A38;
+    }
+    .empresa-info .emp-bar {
+      height: 3mm;
+      background: #0E4561;
+      margin: 0;
+    }
+    .empresa-info .emp-block {
+      padding: 2mm 0;
+      font-size: 8pt;
+      line-height: 1.35;
+    }
+    .empresa-info .emp-block .emp-name { font-weight: 700; font-size: 8.5pt; }
 
     /* ── Utilidades de impresión ──────────────────────────────────── */
     .avoid-break { page-break-inside: avoid; }
@@ -204,6 +223,23 @@
     <ul>
       {{#each condiciones}}<li>{{this}}</li>{{/each}}
     </ul>
+  </div>
+  {{/if}}
+
+  {{!-- Bloque empresa (al pie, antes del footer.png) --}}
+  {{#if empresa}}
+  <div class="empresa-info">
+    <div class="emp-bar"></div>
+    <div class="emp-block">
+      <div class="emp-name">{{empresa.nombre}}</div>
+      {{#if empresa.rut}}<div>Rut: {{empresa.rut}}</div>{{/if}}
+      {{#if empresa.direccion}}<div>Dirección: {{empresa.direccion}}</div>{{/if}}
+    </div>
+    <div class="emp-bar"></div>
+    <div class="emp-block">
+      {{#if empresa.banco}}<div>{{empresa.banco}}</div>{{/if}}
+      {{#if empresa.correo}}<div>Correo: {{empresa.correo}}</div>{{/if}}
+    </div>
   </div>
   {{/if}}
 

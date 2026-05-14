@@ -115,6 +115,15 @@ function presupuestoAdapter(p) {
     observaciones: notasToBullets(p.notas),
     condiciones:   condicionesToBullets(p.condiciones),
     formaPago:     p.forma_pago || '30 a 60 días',
+
+    // Bloque de datos de empresa (se renderiza al pie del contenido, antes del footer.png)
+    empresa: {
+      nombre:    p.empresa_nombre    || 'Onyria Studio SpA',
+      rut:       p.empresa_rut       || '77.946.076-2',
+      direccion: p.empresa_direccion || 'Santa Magdalena 75 of 304, Providencia',
+      banco:     p.empresa_banco     || 'Banco Santander - Cta corriente No 0-000-9632329-8',
+      correo:    p.empresa_correo    || 'carolina@onyria-studio.cl',
+    },
   }
 }
 
