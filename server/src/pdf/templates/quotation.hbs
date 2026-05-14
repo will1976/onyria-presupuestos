@@ -46,11 +46,6 @@
     .meta-grid .field-label { color: #1F5773; }
     .meta-grid .field-value { color: #0E2A38; font-weight: 700; }
 
-    .num-box { text-align: right; }
-    .num-box .num-lbl   { font-size: 9pt; color: #5F7C8B; }
-    .num-box .num-val   { font-size: 13pt; font-weight: 700; color: #0E2A38; letter-spacing: 0.5px; }
-    .num-box .num-fecha { font-size: 9pt; color: #5F7C8B; margin-top: 2px; }
-
     /* ── Proyecto ─────────────────────────────────────────────────── */
     .proyecto {
       margin-top: 4mm;
@@ -172,7 +167,7 @@
 </head>
 <body>
 
-  {{!-- Cabecera de datos (cliente + número de cotización) --}}
+  {{!-- Cabecera de datos cliente. El N° y la fecha van en el header.png como overlay (no aquí). --}}
   <div class="meta-grid">
     <div>
       <div class="field"><span class="field-label">Para:</span> <span class="field-value">{{contactoCliente}}</span></div>
@@ -181,12 +176,7 @@
       <div class="field"><span class="field-label">De:</span> <span class="field-value">{{ejecutivo}}</span></div>
       <div class="field"><span class="field-label">Mail:</span> <span class="field-value">{{mailEjecutivo}}</span></div>
     </div>
-    <div class="num-box">
-      <div class="num-lbl">N° Cotización</div>
-      <div class="num-val">{{numeroCotizacion}}</div>
-      <div class="num-fecha">{{fechaCotizacion}}</div>
-      {{#if validez}}<div class="num-fecha">Validez: {{validez}} días</div>{{/if}}
-    </div>
+    <div></div>
   </div>
 
   {{!-- Proyecto --}}

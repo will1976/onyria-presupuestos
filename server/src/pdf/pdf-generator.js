@@ -76,15 +76,47 @@ function getBrowser() {
  * Chromium aplica padding horizontal por defecto a headerTemplate/footerTemplate
  * (~36px) y un pequeño offset vertical. Usamos position:absolute con left:0,
  * right:0, top:0/bottom:0 para llenar la zona completamente — edge to edge.
+ *
+ * El header además lleva un overlay con N° de cotización y fecha sobre el banner
+ * (texto blanco, alineado a la derecha). Se inyecta data al render porque
+ * Puppeteer no procesa Handlebars en headerTemplate.
  */
-function buildHeaderHtml() {
-  const img = getImageBase64(HEADER_FILE)
+function escapeHtml(s) {
+  return String(s ?? '').replace(/[&<>"']/g, ch => (
+    { '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[ch]
+  ))
+}
+
+function buildHeaderHtml(data = {}) {
+  const img    = getImageBase64(HEADER_FILE)
+  const numero = escapeHtml(data.numeroCotizacion || '')
+  const fecha  = escapeHtml(data.fechaCotizacion  || '')
+
   return `
     <style>
       #header, html, body { margin:0 !important; padding:0 !important; }
+      .h-img {
+        position:absolute; top:0; left:0; right:0; width:100%;
+        margin:0; padding:0;
+        -webkit-print-color-adjust:exact; print-color-adjust:exact;
+      }
+      .h-img img { display:block; width:100%; margin:0; padding:0; border:0; }
+      .h-overlay {
+        position:absolute;
+        top: 11mm;
+        right: 14mm;
+        color: #FFFFFF;
+        text-align: right;
+        font-family: 'DM Sans', 'Helvetica Neue', Arial, sans-serif;
+        line-height: 1.25;
+      }
+      .h-overlay .h-num   { font-size: 13pt; font-weight: 700; letter-spacing: 0.5px; }
+      .h-overlay .h-fecha { font-size: 9pt;  font-weight: 400; margin-top: 1mm; }
     </style>
-    <div style="position:absolute; top:0; left:0; right:0; width:100%; margin:0; padding:0; -webkit-print-color-adjust:exact; print-color-adjust:exact;">
-      <img src="${img}" style="display:block; width:100%; margin:0; padding:0; border:0;" />
+    <div class="h-img"><img src="${img}" /></div>
+    <div class="h-overlay">
+      <div class="h-num">N° ${numero}</div>
+      <div class="h-fecha">${fecha}</div>
     </div>
   `
 }
@@ -133,7 +165,7 @@ async function generarPDF(input) {
       format: 'A4',
       printBackground: true,
       displayHeaderFooter: true,
-      headerTemplate: buildHeaderHtml(),
+      headerTemplate: buildHeaderHtml(data),
       footerTemplate: buildFooterHtml(),
       // left/right en 0 para que header.png y footer.png lleguen al borde.
       // El padding horizontal del contenido lo aplica body { padding: 0 18mm; } en el .hbs
