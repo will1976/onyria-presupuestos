@@ -105,14 +105,13 @@ async function buildHeaderImage(data = {}) {
   const numero = String(data.numeroCotizacion || '').replace(/[<>&"]/g, '')
   const fecha  = String(data.fechaCotizacion  || '').replace(/[<>&"]/g, '')
 
-  // Tamaños proporcionales al alto de la imagen (~297px para header.png actual).
-  // En la cotización de referencia, N° y fecha son similares de tamaño,
-  // ambos con peso regular (no bold) — fuente tipo Arial/Helvetica fina.
-  const numSize   = Math.round(meta.height * 0.16)
-  const fechaSize = Math.round(meta.height * 0.13)
-  const rightPad  = Math.round(meta.width  * 0.018)
-  const numY      = Math.round(meta.height * 0.48)
-  const fechaY    = Math.round(meta.height * 0.74)
+  // Tamaños MUY chicos para coincidir con la cotización de referencia.
+  // header.png ~297px de alto → N° queda en ~33px (~13pt en PDF), fecha ~27px (~10pt).
+  const numSize   = Math.round(meta.height * 0.11)
+  const fechaSize = Math.round(meta.height * 0.09)
+  const rightPad  = Math.round(meta.width  * 0.020)
+  const numY      = Math.round(meta.height * 0.52)
+  const fechaY    = Math.round(meta.height * 0.72)
 
   const svg = `
     <svg width="${meta.width}" height="${meta.height}" xmlns="http://www.w3.org/2000/svg">
