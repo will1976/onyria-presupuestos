@@ -29,10 +29,15 @@ const HEADER_FILE   = path.join(__dirname, 'assets',    'header.png')
 const FOOTER_FILE   = path.join(__dirname, 'assets',    'footer.png')
 
 // ── Caches ────────────────────────────────────────────────────────────────
+// En dev (NODE_ENV !== 'production') se recompila el template y se relee
+// header/footer en cada generación, así editas .hbs o las imágenes y solo
+// refrescas el PDF sin reiniciar el server.
+const DEV_MODE = process.env.NODE_ENV !== 'production'
+
 /** Compilado de Handlebars en memoria */
 let _compiledTemplate = null
 function getTemplate() {
-  if (_compiledTemplate) return _compiledTemplate
+  if (_compiledTemplate && !DEV_MODE) return _compiledTemplate
   const src = fs.readFileSync(TEMPLATE_FILE, 'utf8')
   _compiledTemplate = Handlebars.compile(src, { noEscape: false })
   return _compiledTemplate
@@ -41,7 +46,7 @@ function getTemplate() {
 /** PNGs en base64 cacheados (header/footer) */
 const _imageCache = {}
 function getImageBase64(file) {
-  if (_imageCache[file]) return _imageCache[file]
+  if (_imageCache[file] && !DEV_MODE) return _imageCache[file]
   const buf = fs.readFileSync(file)
   _imageCache[file] = `data:image/png;base64,${buf.toString('base64')}`
   return _imageCache[file]
