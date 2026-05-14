@@ -92,31 +92,17 @@ function buildHeaderHtml(data = {}) {
   const numero = escapeHtml(data.numeroCotizacion || '')
   const fecha  = escapeHtml(data.fechaCotizacion  || '')
 
+  // Chromium aplica CSS por defecto en headerTemplate que fuerza color:rgb(60,60,60)
+  // y a veces font-size:0. Usamos inline styles con !important y z-index alto
+  // para asegurar que el overlay sea blanco y visible sobre el banner.
   return `
-    <style>
-      #header, html, body { margin:0 !important; padding:0 !important; }
-      .h-img {
-        position:absolute; top:0; left:0; right:0; width:100%;
-        margin:0; padding:0;
-        -webkit-print-color-adjust:exact; print-color-adjust:exact;
-      }
-      .h-img img { display:block; width:100%; margin:0; padding:0; border:0; }
-      .h-overlay {
-        position:absolute;
-        top: 11mm;
-        right: 14mm;
-        color: #FFFFFF;
-        text-align: right;
-        font-family: 'DM Sans', 'Helvetica Neue', Arial, sans-serif;
-        line-height: 1.25;
-      }
-      .h-overlay .h-num   { font-size: 13pt; font-weight: 700; letter-spacing: 0.5px; }
-      .h-overlay .h-fecha { font-size: 9pt;  font-weight: 400; margin-top: 1mm; }
-    </style>
-    <div class="h-img"><img src="${img}" /></div>
-    <div class="h-overlay">
-      <div class="h-num">N° ${numero}</div>
-      <div class="h-fecha">${fecha}</div>
+    <style>#header, html, body { margin:0 !important; padding:0 !important; }</style>
+    <div style="position:absolute; top:0; left:0; right:0; width:100%; margin:0; padding:0; -webkit-print-color-adjust:exact; print-color-adjust:exact; z-index:1;">
+      <img src="${img}" style="display:block; width:100%; margin:0; padding:0; border:0;" />
+    </div>
+    <div style="position:absolute; top:11mm; right:14mm; text-align:right; font-family:'DM Sans','Helvetica Neue',Arial,sans-serif; line-height:1.25; z-index:9999; color:#FFFFFF !important;">
+      <div style="font-size:13pt !important; font-weight:700 !important; letter-spacing:0.5px; color:#FFFFFF !important;">N° ${numero}</div>
+      <div style="font-size:9pt !important; font-weight:400 !important; margin-top:1mm; color:#FFFFFF !important;">${fecha}</div>
     </div>
   `
 }
