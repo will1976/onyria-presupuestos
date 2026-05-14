@@ -21,6 +21,7 @@ const fs         = require('fs')
 const path       = require('path')
 const puppeteer  = require('puppeteer')
 const Handlebars = require('handlebars')
+const sharp      = require('sharp')
 const { presupuestoAdapter } = require('./presupuesto.adapter')
 
 // ── Rutas ─────────────────────────────────────────────────────────────────
@@ -87,40 +88,60 @@ function escapeHtml(s) {
   ))
 }
 
-function buildHeaderHtml(data = {}) {
-  const img    = getImageBase64(HEADER_FILE)
-  const numero = escapeHtml(data.numeroCotizacion || '')
-  const fecha  = escapeHtml(data.fechaCotizacion  || '')
+/**
+ * Construye una versión de header.png con el N° y la fecha ya dibujados
+ * en blanco SOBRE la imagen (via SVG composite con Sharp).
+ *
+ * Approach bulletproof: Chromium tiene quirks raros con position:absolute
+ * + color CSS en headerTemplate que hacían el overlay invisible. Baking the
+ * text into the image bytes evita por completo ese problema.
+ *
+ * @returns {Promise<string>} data: URL PNG base64
+ */
+async function buildHeaderImage(data = {}) {
+  const headerBuffer = fs.readFileSync(HEADER_FILE)
+  const meta = await sharp(headerBuffer).metadata()
 
-  // Chromium en headerTemplate tiene quirks:
-  //  - inyecta CSS con color:rgb(60,60,60) y a veces font-size:0
-  //  - dos hijos position:absolute hermanos no siempre stackean predecible
-  //
-  // Por eso usamos UN solo wrapper con background-image (el banner) y el
-  // overlay como hijo posicionado adentro. Así el texto siempre va sobre
-  // la imagen sin depender de z-index.
+  const numero = String(data.numeroCotizacion || '').replace(/[<>&"]/g, '')
+  const fecha  = String(data.fechaCotizacion  || '').replace(/[<>&"]/g, '')
+
+  // Tamaños proporcionales al alto de la imagen para que se vea consistente
+  // header.png tiene ~297px de alto, así que:
+  //   num: ~36px (≈ 14pt en PDF)
+  //   fecha: ~26px (≈ 10pt en PDF)
+  const numSize   = Math.round(meta.height * 0.22)
+  const fechaSize = Math.round(meta.height * 0.16)
+  const rightPad  = Math.round(meta.width  * 0.018)
+  const numY      = Math.round(meta.height * 0.45)
+  const fechaY    = Math.round(meta.height * 0.78)
+
+  const svg = `
+    <svg width="${meta.width}" height="${meta.height}" xmlns="http://www.w3.org/2000/svg">
+      <style>
+        .num   { fill: #FFFFFF; font-family: Arial, Helvetica, sans-serif; font-weight: 700; }
+        .fecha { fill: #FFFFFF; font-family: Arial, Helvetica, sans-serif; font-weight: 400; }
+      </style>
+      <text x="${meta.width - rightPad}" y="${numY}"   text-anchor="end" class="num"   font-size="${numSize}">N° ${numero}</text>
+      <text x="${meta.width - rightPad}" y="${fechaY}" text-anchor="end" class="fecha" font-size="${fechaSize}">${fecha}</text>
+    </svg>
+  `
+
+  const composited = await sharp(headerBuffer)
+    .composite([{ input: Buffer.from(svg), top: 0, left: 0 }])
+    .png()
+    .toBuffer()
+
+  return `data:image/png;base64,${composited.toString('base64')}`
+}
+
+async function buildHeaderHtml(data = {}) {
+  const imgWithText = await buildHeaderImage(data)
   return `
     <style>
-      #header, html, body { margin:0 !important; padding:0 !important; font-size:10px !important; color:#FFFFFF !important; }
+      #header, html, body { margin:0 !important; padding:0 !important; }
     </style>
-    <div style="
-      position:absolute; top:0; left:0; right:0; width:100%; height:35mm;
-      margin:0; padding:0;
-      background-image:url('${img}');
-      background-size:100% 100%;
-      background-repeat:no-repeat;
-      background-position:center top;
-      -webkit-print-color-adjust:exact; print-color-adjust:exact;
-    ">
-      <div style="
-        position:absolute; top:10mm; right:14mm;
-        text-align:right; line-height:1.25;
-        font-family:'DM Sans','Helvetica Neue',Arial,sans-serif;
-        color:#FFFFFF !important;
-      ">
-        <div style="font-size:14pt !important; font-weight:700 !important; letter-spacing:0.5px; color:#FFFFFF !important;">N&deg; ${numero}</div>
-        <div style="font-size:10pt !important; font-weight:400 !important; margin-top:2mm; color:#FFFFFF !important;">${fecha}</div>
-      </div>
+    <div style="position:absolute; top:0; left:0; right:0; width:100%; margin:0; padding:0; -webkit-print-color-adjust:exact; print-color-adjust:exact;">
+      <img src="${imgWithText}" style="display:block; width:100%; margin:0; padding:0; border:0;" />
     </div>
   `
 }
@@ -169,7 +190,7 @@ async function generarPDF(input) {
       format: 'A4',
       printBackground: true,
       displayHeaderFooter: true,
-      headerTemplate: buildHeaderHtml(data),
+      headerTemplate: await buildHeaderHtml(data),
       footerTemplate: buildFooterHtml(),
       // left/right en 0 para que header.png y footer.png lleguen al borde.
       // El padding horizontal del contenido lo aplica body { padding: 0 18mm; } en el .hbs
