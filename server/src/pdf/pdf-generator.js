@@ -105,20 +105,19 @@ async function buildHeaderImage(data = {}) {
   const numero = String(data.numeroCotizacion || '').replace(/[<>&"]/g, '')
   const fecha  = String(data.fechaCotizacion  || '').replace(/[<>&"]/g, '')
 
-  // Tamaños proporcionales al alto de la imagen para que se vea consistente
-  // header.png tiene ~297px de alto, así que:
-  //   num: ~36px (≈ 14pt en PDF)
-  //   fecha: ~26px (≈ 10pt en PDF)
-  const numSize   = Math.round(meta.height * 0.22)
-  const fechaSize = Math.round(meta.height * 0.16)
+  // Tamaños proporcionales al alto de la imagen (~297px para header.png actual).
+  // En la cotización de referencia, N° y fecha son similares de tamaño,
+  // ambos con peso regular (no bold) — fuente tipo Arial/Helvetica fina.
+  const numSize   = Math.round(meta.height * 0.16)
+  const fechaSize = Math.round(meta.height * 0.13)
   const rightPad  = Math.round(meta.width  * 0.018)
-  const numY      = Math.round(meta.height * 0.45)
-  const fechaY    = Math.round(meta.height * 0.78)
+  const numY      = Math.round(meta.height * 0.48)
+  const fechaY    = Math.round(meta.height * 0.74)
 
   const svg = `
     <svg width="${meta.width}" height="${meta.height}" xmlns="http://www.w3.org/2000/svg">
       <style>
-        .num   { fill: #FFFFFF; font-family: Arial, Helvetica, sans-serif; font-weight: 700; }
+        .num   { fill: #FFFFFF; font-family: Arial, Helvetica, sans-serif; font-weight: 400; }
         .fecha { fill: #FFFFFF; font-family: Arial, Helvetica, sans-serif; font-weight: 400; }
       </style>
       <text x="${meta.width - rightPad}" y="${numY}"   text-anchor="end" class="num"   font-size="${numSize}">N° ${numero}</text>

@@ -16,6 +16,7 @@ const MESES_ES = [
   'Enero','Febrero','Marzo','Abril','Mayo','Junio',
   'Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre',
 ]
+const DIAS_ES = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado']
 
 // ── Formateo de números/fechas ───────────────────────────────────────────
 function fmtMonto(n, moneda) {
@@ -28,13 +29,21 @@ function fmtMonto(n, moneda) {
 
 function fmtFechaLarga(iso) {
   const d = iso ? new Date(typeof iso === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(iso) ? iso + 'T12:00:00' : iso) : new Date()
-  return `${d.getDate()} ${MESES_ES[d.getMonth()]} ${d.getFullYear()}`
+  return `${DIAS_ES[d.getDay()]}, ${d.getDate()} de ${MESES_ES[d.getMonth()]} de ${d.getFullYear()}`
 }
 
+/**
+ * Extrae el ÚLTIMO segmento numérico del número de presupuesto y lo padea a 6 dígitos.
+ * Ej: 'ONY-2026-4451' → '004451'
+ *     'ONY-2026-610'  → '000610'
+ *     'ONY-2026-1'    → '000001'
+ */
 function fmtNumero(n) {
   if (!n) return ''
-  const digits = String(n).replace(/\D/g, '')
-  return digits.padStart(6, '0')
+  const groups = String(n).match(/\d+/g)
+  if (!groups || !groups.length) return ''
+  const last = groups[groups.length - 1]
+  return last.padStart(6, '0')
 }
 
 // ── Helpers para items y listas dinámicas ───────────────────────────────
