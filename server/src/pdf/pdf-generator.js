@@ -107,16 +107,19 @@ async function buildHeaderImage(data = {}) {
 
   // Tamaños MUY chicos para coincidir con la cotización de referencia.
   // header.png ~297px de alto → N° queda en ~33px (~13pt en PDF), fecha ~27px (~10pt).
+  // rightPad: 6% del ancho ≈ 1cm sobre A4 (move el texto 1cm más a la izquierda
+  //   respecto al borde derecho)
+  // numY/fechaY: gap reducido a la mitad (antes 20% del alto, ahora 10%)
   const numSize   = Math.round(meta.height * 0.11)
   const fechaSize = Math.round(meta.height * 0.09)
-  const rightPad  = Math.round(meta.width  * 0.020)
+  const rightPad  = Math.round(meta.width  * 0.060)
   const numY      = Math.round(meta.height * 0.52)
-  const fechaY    = Math.round(meta.height * 0.72)
+  const fechaY    = Math.round(meta.height * 0.62)
 
   const svg = `
     <svg width="${meta.width}" height="${meta.height}" xmlns="http://www.w3.org/2000/svg">
       <style>
-        .num   { fill: #FFFFFF; font-family: Arial, Helvetica, sans-serif; font-weight: 400; }
+        .num   { fill: #FFFFFF; font-family: Arial, Helvetica, sans-serif; font-weight: 700; }
         .fecha { fill: #FFFFFF; font-family: Arial, Helvetica, sans-serif; font-weight: 400; }
       </style>
       <text x="${meta.width - rightPad}" y="${numY}"   text-anchor="end" class="num"   font-size="${numSize}">N° ${numero}</text>
