@@ -19,13 +19,16 @@
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     html, body { font-family: 'DM Sans', 'Helvetica Neue', Arial, sans-serif; color: #1F5773; font-size: 10pt; }
 
-    /* ── A4: tamaño de página y margenes para header/footer fijos ─── */
+    /* ── A4: tamaño de página y márgenes para header/footer fijos ───
+       Márgenes horizontales en 0 para que header.png/footer.png lleguen al
+       borde. El padding horizontal del contenido se aplica via body abajo. */
     @page {
       size: A4;
-      margin: 36mm 18mm 32mm 18mm;
-      /* top reservado para header.png (~35mm de alto a 210mm de ancho)
-         bottom reservado para footer.png (~30mm de alto a 210mm de ancho) */
+      margin: 36mm 0 32mm 0;
     }
+
+    /* Padding horizontal del contenido (lo que antes hacía @page margin-left/right) */
+    body { padding: 0 18mm; }
 
     /* ── Tipografía y colores ─────────────────────────────────────── */
     .strong       { color: #0E2A38; font-weight: 700; }

@@ -67,11 +67,19 @@ function getBrowser() {
  * Chromium las renderiza con CSS por defecto agresivamente reducido
  * (font-size: 0). Por eso el truco es envolver en un div con tamaño explícito.
  */
+/**
+ * Chromium aplica padding horizontal por defecto a headerTemplate/footerTemplate
+ * (~36px) y un pequeño offset vertical. Usamos position:absolute con left:0,
+ * right:0, top:0/bottom:0 para llenar la zona completamente — edge to edge.
+ */
 function buildHeaderHtml() {
   const img = getImageBase64(HEADER_FILE)
   return `
-    <div style="margin:0;padding:0;width:100%;-webkit-print-color-adjust:exact;">
-      <img src="${img}" style="display:block;width:100%;margin:0;padding:0;" />
+    <style>
+      #header, html, body { margin:0 !important; padding:0 !important; }
+    </style>
+    <div style="position:absolute; top:0; left:0; right:0; width:100%; margin:0; padding:0; -webkit-print-color-adjust:exact; print-color-adjust:exact;">
+      <img src="${img}" style="display:block; width:100%; margin:0; padding:0; border:0;" />
     </div>
   `
 }
@@ -79,8 +87,11 @@ function buildHeaderHtml() {
 function buildFooterHtml() {
   const img = getImageBase64(FOOTER_FILE)
   return `
-    <div style="margin:0;padding:0;width:100%;-webkit-print-color-adjust:exact;">
-      <img src="${img}" style="display:block;width:100%;margin:0;padding:0;" />
+    <style>
+      #footer, html, body { margin:0 !important; padding:0 !important; }
+    </style>
+    <div style="position:absolute; bottom:0; left:0; right:0; width:100%; margin:0; padding:0; -webkit-print-color-adjust:exact; print-color-adjust:exact;">
+      <img src="${img}" style="display:block; width:100%; margin:0; padding:0; border:0;" />
     </div>
   `
 }
@@ -119,7 +130,9 @@ async function generarPDF(input) {
       displayHeaderFooter: true,
       headerTemplate: buildHeaderHtml(),
       footerTemplate: buildFooterHtml(),
-      margin: { top: '36mm', bottom: '32mm', left: '0mm', right: '0mm' },
+      // left/right en 0 para que header.png y footer.png lleguen al borde.
+      // El padding horizontal del contenido lo aplica body { padding: 0 18mm; } en el .hbs
+      margin: { top: '36mm', bottom: '32mm', left: '0', right: '0' },
       preferCSSPageSize: false,
     })
 
