@@ -119,7 +119,7 @@ async function generarPDF(input) {
       displayHeaderFooter: true,
       headerTemplate: buildHeaderHtml(),
       footerTemplate: buildFooterHtml(),
-      margin: { top: '32mm', bottom: '65mm', left: '0mm', right: '0mm' },
+      margin: { top: '36mm', bottom: '32mm', left: '0mm', right: '0mm' },
       preferCSSPageSize: false,
     })
 
