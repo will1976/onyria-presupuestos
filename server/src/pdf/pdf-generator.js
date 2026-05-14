@@ -126,12 +126,15 @@ async function buildHeaderImage(data = {}) {
     </svg>
   `
 
+  // Importante: usar JPEG calidad ~85 para que la data URL no exceda los ~200KB.
+  // Chromium silenciosamente rechaza data URLs muy grandes (>500KB) en
+  // headerTemplate y termina mostrando solo el banner sin el overlay.
   const composited = await sharp(headerBuffer)
     .composite([{ input: Buffer.from(svg), top: 0, left: 0 }])
-    .png()
+    .jpeg({ quality: 85, mozjpeg: true })
     .toBuffer()
 
-  return `data:image/png;base64,${composited.toString('base64')}`
+  return `data:image/jpeg;base64,${composited.toString('base64')}`
 }
 
 async function buildHeaderHtml(data = {}) {
