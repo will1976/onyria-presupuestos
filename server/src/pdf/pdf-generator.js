@@ -1,0 +1,144 @@
+/**
+ * Generador de PDFs corporativos (Onyria).
+ *
+ * Arquitectura:
+ *   1. Handlebars compila `templates/quotation.hbs` con los datos.
+ *   2. Puppeteer renderiza el HTML resultante en Chromium headless.
+ *   3. `displayHeaderFooter: true` hace que header.png y footer.png
+ *      aparezcan en CADA página automáticamente.
+ *   4. El contenido fluye con flow layout (sin position:absolute).
+ *      Si la lista de items o el texto de observaciones es muy largo,
+ *      el PDF agrega páginas automáticamente.
+ *
+ * API pública:
+ *   const { generarPDF } = require('./pdf/pdf-generator')
+ *   const buffer = await generarPDF(presupuesto)   // shape: el row de DB
+ *   // o pasando datos ya mapeados:
+ *   const buffer = await generarPDF({ data: { numeroCotizacion: ... } })
+ */
+
+const fs         = require('fs')
+const path       = require('path')
+const puppeteer  = require('puppeteer')
+const Handlebars = require('handlebars')
+const { presupuestoAdapter } = require('./presupuesto.adapter')
+
+// ── Rutas ─────────────────────────────────────────────────────────────────
+const TEMPLATE_FILE = path.join(__dirname, 'templates', 'quotation.hbs')
+const HEADER_FILE   = path.join(__dirname, 'assets',    'header.png')
+const FOOTER_FILE   = path.join(__dirname, 'assets',    'footer.png')
+
+// ── Caches ────────────────────────────────────────────────────────────────
+/** Compilado de Handlebars en memoria */
+let _compiledTemplate = null
+function getTemplate() {
+  if (_compiledTemplate) return _compiledTemplate
+  const src = fs.readFileSync(TEMPLATE_FILE, 'utf8')
+  _compiledTemplate = Handlebars.compile(src, { noEscape: false })
+  return _compiledTemplate
+}
+
+/** PNGs en base64 cacheados (header/footer) */
+const _imageCache = {}
+function getImageBase64(file) {
+  if (_imageCache[file]) return _imageCache[file]
+  const buf = fs.readFileSync(file)
+  _imageCache[file] = `data:image/png;base64,${buf.toString('base64')}`
+  return _imageCache[file]
+}
+
+// ── Browser singleton ────────────────────────────────────────────────────
+let _browserPromise = null
+function getBrowser() {
+  if (!_browserPromise) {
+    _browserPromise = puppeteer.launch({
+      headless: 'new',
+      args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage', '--disable-gpu'],
+    })
+    _browserPromise.then(b => b.on('disconnected', () => { _browserPromise = null }))
+                   .catch(() => { _browserPromise = null })
+  }
+  return _browserPromise
+}
+
+// ── Header / Footer HTML ─────────────────────────────────────────────────
+/**
+ * Plantillas para displayHeaderFooter de Puppeteer.
+ * Chromium las renderiza con CSS por defecto agresivamente reducido
+ * (font-size: 0). Por eso el truco es envolver en un div con tamaño explícito.
+ */
+function buildHeaderHtml() {
+  const img = getImageBase64(HEADER_FILE)
+  return `
+    <div style="margin:0;padding:0;width:100%;-webkit-print-color-adjust:exact;">
+      <img src="${img}" style="display:block;width:100%;margin:0;padding:0;" />
+    </div>
+  `
+}
+
+function buildFooterHtml() {
+  const img = getImageBase64(FOOTER_FILE)
+  return `
+    <div style="margin:0;padding:0;width:100%;-webkit-print-color-adjust:exact;">
+      <img src="${img}" style="display:block;width:100%;margin:0;padding:0;" />
+    </div>
+  `
+}
+
+// ── API principal ────────────────────────────────────────────────────────
+/**
+ * Genera un PDF a partir de un presupuesto (o de un objeto data ya adaptado).
+ *
+ * Acepta dos formas para mantener compatibilidad:
+ *   - generarPDF(presupuestoFila)      → pasa por el adapter
+ *   - generarPDF({ data: contextoYa }) → usa el contexto tal cual
+ *
+ * @returns {Promise<Buffer>}
+ */
+async function generarPDF(input) {
+  const t0 = Date.now()
+
+  // Adaptar shape de DB → variables del template
+  const data = input && input.data
+    ? input.data
+    : presupuestoAdapter(input)
+
+  // Compilar HTML
+  const template = getTemplate()
+  const html     = template(data)
+
+  // Renderizar con Puppeteer
+  const browser = await getBrowser()
+  const page    = await browser.newPage()
+  try {
+    await page.setContent(html, { waitUntil: 'domcontentloaded' })
+
+    const pdfBuffer = await page.pdf({
+      format: 'A4',
+      printBackground: true,
+      displayHeaderFooter: true,
+      headerTemplate: buildHeaderHtml(),
+      footerTemplate: buildFooterHtml(),
+      margin: { top: '32mm', bottom: '65mm', left: '0mm', right: '0mm' },
+      preferCSSPageSize: false,
+    })
+
+    console.log(`[pdf] generado en ${Date.now() - t0}ms (n°${data.numeroCotizacion || '—'})`)
+    return pdfBuffer
+  } finally {
+    await page.close().catch(() => {})
+  }
+}
+
+/** Útil para tests / debug: devuelve el HTML que se renderizaría */
+function buildHtml(input) {
+  const data = input && input.data ? input.data : presupuestoAdapter(input)
+  return getTemplate()(data)
+}
+
+/** Útil para tests: el contexto crudo del adapter */
+function buildContext(presupuesto) {
+  return presupuestoAdapter(presupuesto)
+}
+
+module.exports = { generarPDF, buildHtml, buildContext }

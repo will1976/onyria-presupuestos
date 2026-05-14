@@ -1,3 +1,11 @@
+/**
+ * @deprecated Esta implementación usaba un único PNG completo como fondo
+ * y posicionamiento absoluto en mm. Reemplazada por server/src/pdf/pdf-generator.js
+ * (Handlebars + flow layout + header.png/footer.png en displayHeaderFooter).
+ *
+ * Se mantiene aquí solo como referencia/backup. Si se necesita revertir,
+ * cambiar el import en presupuestos.controller.js.
+ */
 const puppeteer = require('puppeteer')
 const fs = require('fs')
 const path = require('path')

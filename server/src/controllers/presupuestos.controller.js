@@ -1,5 +1,5 @@
 const { query, getClient }                          = require('../db')
-const { generarPDF }                                = require('../utils/pdfGenerator')
+const { generarPDF }                                = require('../pdf/pdf-generator')
 const { templateExists, getDiff, generarExcelTemplate } = require('../utils/excelTemplate')
 
 // ── helpers ────────────────────────────────────────────────────────────────
