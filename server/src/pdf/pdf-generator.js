@@ -92,17 +92,35 @@ function buildHeaderHtml(data = {}) {
   const numero = escapeHtml(data.numeroCotizacion || '')
   const fecha  = escapeHtml(data.fechaCotizacion  || '')
 
-  // Chromium aplica CSS por defecto en headerTemplate que fuerza color:rgb(60,60,60)
-  // y a veces font-size:0. Usamos inline styles con !important y z-index alto
-  // para asegurar que el overlay sea blanco y visible sobre el banner.
+  // Chromium en headerTemplate tiene quirks:
+  //  - inyecta CSS con color:rgb(60,60,60) y a veces font-size:0
+  //  - dos hijos position:absolute hermanos no siempre stackean predecible
+  //
+  // Por eso usamos UN solo wrapper con background-image (el banner) y el
+  // overlay como hijo posicionado adentro. Así el texto siempre va sobre
+  // la imagen sin depender de z-index.
   return `
-    <style>#header, html, body { margin:0 !important; padding:0 !important; }</style>
-    <div style="position:absolute; top:0; left:0; right:0; width:100%; margin:0; padding:0; -webkit-print-color-adjust:exact; print-color-adjust:exact; z-index:1;">
-      <img src="${img}" style="display:block; width:100%; margin:0; padding:0; border:0;" />
-    </div>
-    <div style="position:absolute; top:11mm; right:14mm; text-align:right; font-family:'DM Sans','Helvetica Neue',Arial,sans-serif; line-height:1.25; z-index:9999; color:#FFFFFF !important;">
-      <div style="font-size:13pt !important; font-weight:700 !important; letter-spacing:0.5px; color:#FFFFFF !important;">N° ${numero}</div>
-      <div style="font-size:9pt !important; font-weight:400 !important; margin-top:1mm; color:#FFFFFF !important;">${fecha}</div>
+    <style>
+      #header, html, body { margin:0 !important; padding:0 !important; font-size:10px !important; color:#FFFFFF !important; }
+    </style>
+    <div style="
+      position:absolute; top:0; left:0; right:0; width:100%; height:35mm;
+      margin:0; padding:0;
+      background-image:url('${img}');
+      background-size:100% 100%;
+      background-repeat:no-repeat;
+      background-position:center top;
+      -webkit-print-color-adjust:exact; print-color-adjust:exact;
+    ">
+      <div style="
+        position:absolute; top:10mm; right:14mm;
+        text-align:right; line-height:1.25;
+        font-family:'DM Sans','Helvetica Neue',Arial,sans-serif;
+        color:#FFFFFF !important;
+      ">
+        <div style="font-size:14pt !important; font-weight:700 !important; letter-spacing:0.5px; color:#FFFFFF !important;">N&deg; ${numero}</div>
+        <div style="font-size:10pt !important; font-weight:400 !important; margin-top:2mm; color:#FFFFFF !important;">${fecha}</div>
+      </div>
     </div>
   `
 }
