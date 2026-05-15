@@ -15,24 +15,23 @@ Pensada para correr en el PC del usuario final sin instalar PostgreSQL, sin Dock
 
 ### Un solo click: `iniciar.bat`
 
-Desde la raíz del proyecto, **doble-click en `iniciar.bat`** y elige el pipeline IA:
+Desde la raíz del proyecto, **doble-click en `iniciar.bat`**:
 
 ```
 ==========================================
   ONYRIA STUDIO - Presupuestos
+  Iniciando aplicacion local
 ==========================================
 
-Elige el pipeline de IA a utilizar:
+Pipeline IA v2 activo:
+  - Embeddings locales con xenova/transformers
+  - Búsqueda semántica por cosine similarity
+  - Validación estricta contra catálogo (no inventa servicios)
 
-  [1] Pipeline NUEVO v2 (recomendado)
-      - Embeddings locales con xenova/transformers
-      - Búsqueda semántica por cosine similarity
-      - Validación estricta contra catálogo
-
-  [2] Pipeline LEGACY
-      - Solo Groq + fuzzy matching por palabras
-
-Tu eleccion [1/2] (default: 1):
+==========================================
+  Backend:  http://localhost:3001
+  Frontend: http://localhost:5173
+==========================================
 ```
 
 El `.bat`:
@@ -47,11 +46,8 @@ El `.bat`:
 # Instalar todo (solo la primera vez)
 npm run install:all
 
-# Modo desarrollo — pipeline IA legacy
+# Modo desarrollo
 npm run dev:local
-
-# Modo desarrollo — pipeline IA v2 (con embeddings)
-npm run dev:local:v2
 ```
 
 ---
@@ -171,10 +167,10 @@ Búsqueda semántica robusta sobre el catálogo de servicios, sin que el modelo 
 **Endpoints:**
 | Método | Ruta | Descripción |
 |---|---|---|
-| POST | `/api/ia/v2` | Pipeline completo (normalize → intent → search → validate) |
+| POST | `/api/ia/analizar` | Pipeline completo (compatibilidad frontend) |
+| POST | `/api/ia/v2` | Mismo endpoint, alias explícito |
 | GET | `/api/ia/v2/embeddings/status` | Estado del índice (cuántos servicios tienen embedding) |
 | POST | `/api/ia/v2/embeddings/rebuild` | Regenerar (body: `{ force: true }`) |
-| POST | `/api/ia/analizar` | Endpoint legacy (delega a v2 si `USE_NEW_AI_PIPELINE=true`) |
 
 **Etapas del pipeline:**
 1. **Normalizer** — limpia el texto del cliente (emojis, whitespace, control chars)
@@ -196,7 +192,6 @@ TOP_K_CANDIDATES=5
 AUTO_SELECT_THRESHOLD=0.85
 SUGGEST_THRESHOLD=0.60
 CATEGORY_BOOST_MULTIPLIER=1.15
-USE_NEW_AI_PIPELINE=true                   # /api/ia/analizar delega a v2
 ```
 
 ---
@@ -254,10 +249,10 @@ const buffer = await generarPDF(presupuestoRow)   // shape: el row de la BD
 ### IA
 | Método | Ruta | Descripción |
 |---|---|---|
-| POST | `/api/ia/v2` | Pipeline nuevo |
+| POST | `/api/ia/analizar` | Pipeline (normalize → intent → search → validate) |
+| POST | `/api/ia/v2` | Alias explícito al pipeline |
 | GET | `/api/ia/v2/embeddings/status` | Estado del índice |
 | POST | `/api/ia/v2/embeddings/rebuild` | Regenerar embeddings |
-| POST | `/api/ia/analizar` | Legacy (delega a v2 si flag activo) |
 
 ---
 
@@ -300,8 +295,7 @@ node server/src/ai/jobs/generateServiceEmbeddings.js --force  # todos
 node server/src/db/scripts/reset_y_cargar_servicios.js
 
 # Solo backend (sin frontend)
-npm run dev:server:local            # legacy
-npm run dev:server:local:v2         # pipeline v2
+npm run dev:server:local
 
 # Migrar manualmente
 node server/src/db/migrate.js

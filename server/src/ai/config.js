@@ -5,8 +5,6 @@
  *  - GROQ_API_KEY            (requerido para extracción/validación)
  *  - GROQ_MODEL              (default: 'llama-3.3-70b-versatile')
  *  - EMBEDDINGS_MODEL        (default: 'Xenova/all-MiniLM-L6-v2', 384 dim)
- *  - USE_NEW_AI_PIPELINE     (default: false)  → cuando true, /api/ia/analizar
- *                              delega al pipeline v2 internamente
  *  - SIMILARITY_THRESHOLD    (default: 0.35)
  *  - TOP_K_CANDIDATES        (default: 5)
  *  - AUTO_SELECT_THRESHOLD   (default: 0.85)
@@ -36,8 +34,5 @@ module.exports = {
     // Multiplicador aplicado al similarity_score de servicios cuya categoría
     // coincide con la detectada por la IA. 1.0 = sin boost. Recomendado 1.10-1.25.
     categoryBoost:       parseFloat(process.env.CATEGORY_BOOST_MULTIPLIER) || 1.15,
-  },
-  flags: {
-    useNewPipeline: process.env.USE_NEW_AI_PIPELINE === 'true',
   },
 }
