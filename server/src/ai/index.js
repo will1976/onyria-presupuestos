@@ -15,6 +15,7 @@ const { extractStructuredIntent }         = require('./services/intent.service')
 const { normalizeUserInput }              = require('./services/normalizer.service')
 const { validateAndSelect }               = require('./services/validator.service')
 const { generateServiceEmbeddings, rebuildAllEmbeddings } = require('./jobs/generateServiceEmbeddings')
+const { updateServiceEmbedding } = require('./jobs/updateServiceEmbedding')
 const { embeddingsAdapter }               = require('./adapters/embeddings.adapter')
 const { groqAdapter }                     = require('./adapters/groq.adapter')
 const config                              = require('./config')
@@ -31,6 +32,7 @@ module.exports = {
   // Jobs
   generateServiceEmbeddings,
   rebuildAllEmbeddings,
+  updateServiceEmbedding,
   // Adapters (avanzado)
   embeddingsAdapter,
   groqAdapter,

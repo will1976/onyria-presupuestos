@@ -1,5 +1,21 @@
 const { query }    = require('../db')
 const { csvToList } = require('../ai/utils/textNormalizer')
+const { updateServiceEmbedding } = require('../ai/jobs/updateServiceEmbedding')
+
+/**
+ * Fire-and-forget: regenera el embedding del servicio en background.
+ * No bloquea la respuesta HTTP. Si falla, solo se loguea (el servicio ya
+ * quedó persistido OK).
+ */
+function refreshEmbeddingAsync(serviceId) {
+  setImmediate(async () => {
+    try {
+      await updateServiceEmbedding(serviceId)
+    } catch (err) {
+      console.error('[Embedding] background update failed:', err.message)
+    }
+  })
+}
 
 /**
  * Helpers de mapeo de payload → fila de DB.
@@ -76,6 +92,9 @@ async function crear(req, res, next) {
       subcategoria?.trim() || null,
     ])
 
+    // Auto-regenerar embedding del servicio recién creado (fire-and-forget)
+    if (rows[0]?.id) refreshEmbeddingAsync(rows[0].id)
+
     res.status(201).json({ success: true, data: rows[0] })
   } catch (err) { next(err) }
 }
@@ -120,6 +139,10 @@ async function actualizar(req, res, next) {
     ])
 
     if (!rows[0]) return res.status(404).json({ success: false, error: 'Servicio no encontrado' })
+
+    // Auto-regenerar embedding del servicio editado (fire-and-forget)
+    refreshEmbeddingAsync(rows[0].id)
+
     res.json({ success: true, data: rows[0] })
   } catch (err) { next(err) }
 }

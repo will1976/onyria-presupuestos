@@ -50,11 +50,19 @@ class ServiciosRepository extends BaseRepository {
   /**
    * Setter del embedding de un servicio.
    * El embedding se almacena como JSON serializado (array de floats).
-   * No usa pgvector; la similitud se calculará en JS cuando se implemente la búsqueda semántica.
+   * Actualiza también embedding_updated_at para auditoría/rastreo.
    */
   setEmbedding(id, vector) {
     const json = vector == null ? null : JSON.stringify(vector)
-    this.db.prepare('UPDATE servicios SET embedding = ?, updated_at = datetime(\'now\') WHERE id = ?').run(json, id)
+    const now  = new Date().toISOString()
+    this.db.prepare(`
+      UPDATE servicios
+         SET embedding            = ?,
+             embedding_updated_at = ?,
+             updated_at           = datetime('now')
+       WHERE id = ?
+    `).run(json, vector == null ? null : now, id)
+    return now
   }
 
   /**
