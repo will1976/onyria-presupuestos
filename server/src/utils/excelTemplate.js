@@ -2,10 +2,29 @@ const ExcelJS = require('exceljs')
 const path    = require('path')
 const fs      = require('fs')
 const { groupServicesByExcelCell, parseExcelCell, safeExcelCell } = require('./excelCell')
+const { query } = require('../db')
 
 const TEMPLATE_PATH = path.join(__dirname, '../../templates/Template Excel Presupuesto.xlsx')
 
 const log = (msg) => console.log(`[Excel Export] ${msg}`)
+
+/**
+ * Construye un mapa { nombreNormalizado → excel_cell } cargando todos los
+ * servicios activos. Sirve como fallback cuando los items del presupuesto
+ * tienen descripcion_personalizada pero servicio_id null (caso típico
+ * cuando el item se creó con texto libre o vía pipeline IA sin link).
+ */
+async function loadExcelCellLookup() {
+  const { rows } = await query(
+    'SELECT nombre, excel_cell FROM servicios WHERE excel_cell IS NOT NULL'
+  )
+  const map = new Map()
+  for (const r of rows) {
+    if (!r.nombre || !r.excel_cell) continue
+    map.set(String(r.nombre).trim().toLowerCase(), r.excel_cell)
+  }
+  return map
+}
 
 // ── Normalización ─────────────────────────────────────────────────────────────
 function norm(s) {
@@ -184,12 +203,29 @@ async function generarExcelTemplate(presupuesto, opcionesPrecio = {}) {
   const items = presupuesto.items || []
   log(`Grouping services... (${items.length} items)`)
 
-  // Normalizar cada item para que tenga excel_cell efectivo
-  const itemsForGroup = items.map(it => ({
-    ...it,
-    excel_cell: safeExcelCell(it.excel_cell || it.servicio_excel_cell),
-    cantidad:   parseFloat(it.cantidad) || 0,
-  }))
+  // Lookup de fallback por nombre: para items sin servicio_id (texto libre)
+  // o cuando el JOIN no encontró el servicio.
+  const nameLookup = await loadExcelCellLookup()
+
+  // Resolver excel_cell efectivo en este orden:
+  //   1. el del item (override directo)
+  //   2. el del servicio joinado por servicio_id
+  //   3. lookup por descripcion_personalizada → catálogo
+  const itemsForGroup = items.map(it => {
+    let cell = safeExcelCell(it.excel_cell || it.servicio_excel_cell)
+    if (!cell) {
+      const nombreItem = (it.descripcion_personalizada || it.servicio_nombre || '').trim().toLowerCase()
+      if (nombreItem && nameLookup.has(nombreItem)) {
+        cell = nameLookup.get(nombreItem)
+        log(`Match by name: "${it.descripcion_personalizada || it.servicio_nombre}" → ${cell}`)
+      }
+    }
+    return {
+      ...it,
+      excel_cell: cell,
+      cantidad:   parseFloat(it.cantidad) || 0,
+    }
+  })
 
   const { mapped, unmapped } = groupServicesByExcelCell(itemsForGroup)
 
