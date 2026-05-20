@@ -150,14 +150,85 @@ async function buildHeaderHtml(data = {}) {
   `
 }
 
-function buildFooterHtml() {
-  const img = getImageBase64(FOOTER_FILE)
+/**
+ * Convierte footer.png a JPEG comprimido (data URL) para evitar el límite
+ * de tamaño de Chromium en footerTemplate. Cacheado.
+ */
+let _footerJpegPromise = null
+function getFooterJpeg() {
+  if (_footerJpegPromise && !DEV_MODE) return _footerJpegPromise
+  _footerJpegPromise = sharp(fs.readFileSync(FOOTER_FILE))
+    .jpeg({ quality: 85, mozjpeg: true })
+    .toBuffer()
+    .then(buf => `data:image/jpeg;base64,${buf.toString('base64')}`)
+  return _footerJpegPromise
+}
+
+function escHtml(s) {
+  return String(s == null ? '' : s).replace(/[<>&"']/g, c =>
+    ({ '<':'&lt;', '>':'&gt;', '&':'&amp;', '"':'&quot;', "'":'&#39;' }[c])
+  )
+}
+
+/**
+ * footerTemplate de Puppeteer: contenido que se repite en CADA página.
+ * Estructura (de arriba a abajo dentro del margen inferior):
+ *   1. Observaciones (bar + bullets)
+ *   2. Forma de Pago (bar beige)
+ *   3. Condiciones (bullets)
+ *   4. Empresa (2 barras azul oscuro con datos)
+ *   5. footer.png (logo + url al pie)
+ *
+ * Por la regla del cliente: estos bloques aparecen en TODAS las páginas;
+ * los Totales NO van acá (se quedan en el body para mostrarse sólo en la
+ * última página, después del último item del detalle).
+ */
+async function buildFooterHtml(data = {}) {
+  const img    = await getFooterJpeg()
+  const obs    = Array.isArray(data.observaciones) ? data.observaciones : []
+  const cond   = Array.isArray(data.condiciones)   ? data.condiciones   : []
+  const fp     = data.formaPago || ''
+  const emp    = data.empresa || {}
+
+  const obsHtml = obs.length ? `
+    <div style="background-color:#0E4561 !important;color:#FFFFFF !important;padding:1.3mm 18mm;font-weight:700;font-size:7pt;letter-spacing:0.3px;-webkit-print-color-adjust:exact;print-color-adjust:exact;">Observaciones</div>
+    <ul style="list-style:disc;padding-left:23mm;padding-right:18mm;font-size:7pt;line-height:1.3;color:#0E2A38 !important;margin:1.2mm 0 0;">
+      ${obs.map(o => `<li style="margin-bottom:0.4mm;padding-left:1mm;">${escHtml(o)}</li>`).join('')}
+    </ul>` : ''
+
+  const fpHtml = fp ? `
+    <div style="background-color:#E8E5DC !important;color:#0E2A38 !important;padding:1.3mm 18mm;font-weight:700;font-size:7pt;margin-top:2mm;-webkit-print-color-adjust:exact;print-color-adjust:exact;">Forma de Pago: ${escHtml(fp)}</div>` : ''
+
+  const condHtml = cond.length ? `
+    <ul style="list-style:disc;padding-left:23mm;padding-right:18mm;font-size:6pt;line-height:1.2;color:#0E2A38 !important;margin:1.5mm 0 0;">
+      ${cond.map(c => `<li style="margin-bottom:0.3mm;padding-left:1mm;">${escHtml(c)}</li>`).join('')}
+    </ul>` : ''
+
+  const empHtml = emp.nombre ? `
+    <div style="text-align:center;color:#0E2A38 !important;margin-top:3mm;">
+      <div style="height:2.5mm;background-color:#0E4561 !important;-webkit-print-color-adjust:exact;print-color-adjust:exact;"></div>
+      <div style="padding:1.5mm 0;font-size:7pt;line-height:1.3;">
+        <div style="font-weight:700;font-size:7.5pt;">${escHtml(emp.nombre)}</div>
+        ${emp.rut       ? `<div>Rut: ${escHtml(emp.rut)}</div>` : ''}
+        ${emp.direccion ? `<div>Dirección: ${escHtml(emp.direccion)}</div>` : ''}
+      </div>
+      <div style="height:2.5mm;background-color:#0E4561 !important;-webkit-print-color-adjust:exact;print-color-adjust:exact;"></div>
+      <div style="padding:1.5mm 0;font-size:7pt;line-height:1.3;">
+        ${emp.banco  ? `<div>${escHtml(emp.banco)}</div>` : ''}
+        ${emp.correo ? `<div>Correo: ${escHtml(emp.correo)}</div>` : ''}
+      </div>
+    </div>` : ''
+
   return `
     <style>
-      #footer, html, body { margin:0 !important; padding:0 !important; }
+      #footer, html, body { margin:0 !important; padding:0 !important; font-size:10px !important; color:#0E2A38 !important; }
     </style>
-    <div style="position:absolute; bottom:0; left:0; right:0; width:100%; margin:0; padding:0; -webkit-print-color-adjust:exact; print-color-adjust:exact;">
-      <img src="${img}" style="display:block; width:100%; margin:0; padding:0; border:0;" />
+    <div style="position:absolute; bottom:0; left:0; right:0; width:100%; margin:0; padding:0; font-family:'DM Sans','Helvetica Neue',Arial,sans-serif; -webkit-print-color-adjust:exact; print-color-adjust:exact;">
+      ${obsHtml}
+      ${fpHtml}
+      ${condHtml}
+      ${empHtml}
+      <img src="${img}" style="display:block;width:100%;margin:0;padding:0;border:0;" />
     </div>
   `
 }
@@ -195,10 +266,14 @@ async function generarPDF(input) {
       printBackground: true,
       displayHeaderFooter: true,
       headerTemplate: await buildHeaderHtml(data),
-      footerTemplate: buildFooterHtml(),
+      footerTemplate: await buildFooterHtml(data),
       // left/right en 0 para que header.png y footer.png lleguen al borde.
       // El padding horizontal del contenido lo aplica body { padding: 0 18mm; } en el .hbs
-      margin: { top: '36mm', bottom: '32mm', left: '0', right: '0' },
+      // bottom 95mm reserva espacio para Observaciones + Forma de Pago + Condiciones
+      // + Empresa + footer.png, que se repiten en CADA página vía footerTemplate.
+      // Los Totales (Total Neto/IVA/TOTAL) quedan en el body → solo aparecen al final
+      // del detalle (última página).
+      margin: { top: '36mm', bottom: '95mm', left: '0', right: '0' },
       preferCSSPageSize: false,
     })
 

@@ -1,13 +1,21 @@
 {{!--
   Template Handlebars de cotización A4.
-  Layout: flow layout, sin position:absolute. El contenido crece dinámicamente
-  y, si pasa una página, Puppeteer paginará automáticamente; el header.png y
-  footer.png se repiten en cada página vía displayHeaderFooter del PDF.
+  Layout: flow layout, sin position:absolute.
+
+  Header (header.png con N° y fecha): repetido en CADA página vía
+  Puppeteer headerTemplate.
+
+  Bottom (Observaciones + Forma de Pago + Condiciones + Empresa + footer.png):
+  repetido en CADA página vía Puppeteer footerTemplate.
+
+  Body (este template): cliente + proyecto + detalle + TOTALES.
+  Los Totales son lo último del body, así que naturalmente quedan
+  SÓLO en la última página, al final del detalle.
 
   Variables esperadas (ver pdf-generator.js → buildContext()):
     numeroCotizacion, fechaCotizacion, cliente, proyecto, contactoCliente,
     mailCliente, ejecutivo, mailEjecutivo, items[{descripcion}],
-    neto, iva, total, observaciones[], condiciones, formaPago, moneda
+    neto, iva, total
 --}}
 <!DOCTYPE html>
 <html lang="es">
@@ -19,21 +27,17 @@
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     html, body { font-family: 'DM Sans', 'Helvetica Neue', Arial, sans-serif; color: #1F5773; font-size: 10pt; }
 
-    /* ── A4: tamaño de página y márgenes para header/footer fijos ───
-       Márgenes horizontales en 0 para que header.png/footer.png lleguen al
-       borde. El padding horizontal del contenido se aplica via body abajo. */
+    /* ── A4: márgenes horizontales en 0 para que header.png/footer.png
+       lleguen al borde. El padding horizontal del contenido se aplica via
+       body abajo. top=36mm reserva espacio para header.png + N°/fecha.
+       bottom=95mm reserva espacio para todo el bloque footer (observaciones,
+       forma de pago, condiciones, empresa, footer.png). */
     @page {
       size: A4;
-      margin: 36mm 0 32mm 0;
+      margin: 36mm 0 95mm 0;
     }
 
-    /* Padding horizontal del contenido (lo que antes hacía @page margin-left/right) */
     body { padding: 0 18mm; }
-
-    /* ── Tipografía y colores ─────────────────────────────────────── */
-    .strong       { color: #0E2A38; font-weight: 700; }
-    .muted        { color: #5F7C8B; }
-    .row          { display: flex; }
 
     /* ── Datos cliente / ejecutivo / proyecto ─────────────────────── */
     .meta-grid {
@@ -71,7 +75,7 @@
     .totales-wrap {
       display: flex;
       justify-content: flex-end;
-      margin-top: 33mm;
+      margin-top: 12mm;
       page-break-inside: avoid;
     }
     .totales {
@@ -82,83 +86,6 @@
       font-size: 10pt;
       line-height: 1.9;
     }
-    /* Las tres líneas (Total Neto / IVA / TOTAL) usan el mismo tamaño */
-
-    /* ── Observaciones ────────────────────────────────────────────── */
-    .observaciones,
-    .condiciones,
-    .forma-pago {
-      margin-top: 6mm;
-      page-break-inside: avoid;
-    }
-
-    .section-bar {
-      background-color: #0E4561;
-      color: #FFFFFF;
-      padding: 1.3mm 4mm;
-      font-weight: 700;
-      font-size: 7.5pt;
-      letter-spacing: 0.3px;
-      margin-bottom: 1.8mm;
-      -webkit-print-color-adjust: exact;
-      print-color-adjust: exact;
-    }
-
-    /* Forma de Pago usa otro estilo (bar beige claro) */
-    .forma-pago .section-bar {
-      background-color: #E8E5DC;
-      color: #0E2A38;
-    }
-
-    .observaciones ul {
-      list-style: disc;
-      padding-left: 5mm;
-      font-size: 7.5pt;
-      line-height: 1.35;
-      color: #0E2A38;
-    }
-    .condiciones ul {
-      list-style: disc;
-      padding-left: 5mm;
-      font-size: 6.5pt;
-      line-height: 1.2;
-      color: #0E2A38;
-    }
-    .observaciones ul li {
-      margin-bottom: 0.5mm;
-      padding-left: 1mm;
-    }
-    .condiciones ul li {
-      margin-bottom: 0.3mm;
-      padding-left: 1mm;
-    }
-
-    .forma-pago .fp-text {
-      font-size: 7.5pt;
-      color: #0E2A38;
-      padding: 0 1mm;
-    }
-
-    /* ── Bloque de datos de empresa (al pie del contenido) ─────────── */
-    .empresa-info {
-      margin-top: 5mm;
-      page-break-inside: avoid;
-      text-align: center;
-      color: #0E2A38;
-    }
-    .empresa-info .emp-bar {
-      height: 3mm;
-      background-color: #0E4561;
-      margin: 0;
-      -webkit-print-color-adjust: exact;
-      print-color-adjust: exact;
-    }
-    .empresa-info .emp-block {
-      padding: 2mm 0;
-      font-size: 8pt;
-      line-height: 1.35;
-    }
-    .empresa-info .emp-block .emp-name { font-weight: 700; font-size: 8.5pt; }
 
     /* ── Utilidades de impresión ──────────────────────────────────── */
     .avoid-break { page-break-inside: avoid; }
@@ -167,7 +94,7 @@
 </head>
 <body>
 
-  {{!-- Cabecera de datos cliente. El N° y la fecha van en el header.png como overlay (no aquí). --}}
+  {{!-- Cabecera de datos cliente. El N° y la fecha van en el header.png como overlay. --}}
   <div class="meta-grid">
     <div>
       <div class="field"><span class="field-label">Para:</span> <span class="field-value">{{contactoCliente}}</span></div>
@@ -201,7 +128,7 @@
     </ul>
   </div>
 
-  {{!-- Totales --}}
+  {{!-- Totales (al final del body → sólo se ven en la última página) --}}
   <div class="totales-wrap">
     <div class="totales">
       <div>Total Neto: $ {{neto}}</div>
@@ -209,49 +136,6 @@
       <div class="tot-final">TOTAL: $ {{total}}</div>
     </div>
   </div>
-
-  {{!-- Observaciones --}}
-  {{#if observaciones.length}}
-  <div class="observaciones">
-    <div class="section-bar">Observaciones</div>
-    <ul>
-      {{#each observaciones}}<li>{{this}}</li>{{/each}}
-    </ul>
-  </div>
-  {{/if}}
-
-  {{!-- Forma de pago --}}
-  {{#if formaPago}}
-  <div class="forma-pago">
-    <div class="section-bar">Forma de Pago: {{formaPago}}</div>
-  </div>
-  {{/if}}
-
-  {{!-- Condiciones --}}
-  {{#if condiciones.length}}
-  <div class="condiciones">
-    <ul>
-      {{#each condiciones}}<li>{{this}}</li>{{/each}}
-    </ul>
-  </div>
-  {{/if}}
-
-  {{!-- Bloque empresa (al pie, antes del footer.png) --}}
-  {{#if empresa}}
-  <div class="empresa-info">
-    <div class="emp-bar"></div>
-    <div class="emp-block">
-      <div class="emp-name">{{empresa.nombre}}</div>
-      {{#if empresa.rut}}<div>Rut: {{empresa.rut}}</div>{{/if}}
-      {{#if empresa.direccion}}<div>Dirección: {{empresa.direccion}}</div>{{/if}}
-    </div>
-    <div class="emp-bar"></div>
-    <div class="emp-block">
-      {{#if empresa.banco}}<div>{{empresa.banco}}</div>{{/if}}
-      {{#if empresa.correo}}<div>Correo: {{empresa.correo}}</div>{{/if}}
-    </div>
-  </div>
-  {{/if}}
 
 </body>
 </html>
