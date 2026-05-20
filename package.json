@@ -2,6 +2,12 @@
   "name": "onyria-presupuestos",
   "version": "1.0.0",
   "private": true,
+  "description": "Sistema de Presupuestos Onyria Studio — local single-user desktop app",
+  "author": {
+    "name": "Onyria Studio",
+    "email": "carolina@onyria-studio.cl"
+  },
+  "main": "electron-app/main.js",
   "workspaces": [
     "client",
     "server"
@@ -12,17 +18,113 @@
     "dev:server": "npm run dev --workspace=server",
     "dev:server:local": "cross-env PORT=3001 NODE_ENV=development npm run dev --workspace=server",
     "dev:client": "npm run dev --workspace=client",
+    "dev:electron": "cross-env NODE_ENV=production electron .",
     "install:all": "npm install && npm install --workspace=client && npm install --workspace=server",
+    "rebuild:native": "electron-rebuild -f -w better-sqlite3 -w sharp",
+    "fix:7za": "node electron-app/scripts/fix-7za.js",
+    "postinstall": "electron-builder install-app-deps",
     "db:migrate": "npm run migrate --workspace=server",
-    "build": "npm run build --workspace=client",
+    "build": "npm run build:client",
+    "build:client": "npm run build --workspace=client",
+    "build:electron": "electron-builder",
     "start": "node server/src/db/migrate.js && node server/src/index.js",
-    "db:seed": "npm run seed --workspace=server"
+    "db:seed": "npm run seed --workspace=server",
+    "package": "npm run build:client && electron-builder --dir",
+    "dist": "npm run build:client && electron-builder"
   },
   "devDependencies": {
+    "@electron/rebuild": "^4.0.4",
     "concurrently": "^8.2.2",
-    "cross-env": "^10.1.0"
+    "cross-env": "^10.1.0",
+    "electron": "^31.7.7",
+    "electron-builder": "^26.8.1",
+    "to-ico": "^1.1.5"
   },
   "dependencies": {
-    "groq-sdk": "^1.1.2"
+    "@xenova/transformers": "^2.17.2",
+    "bcryptjs": "^2.4.3",
+    "better-sqlite3": "^12.10.0",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "exceljs": "^4.4.0",
+    "express": "^4.18.3",
+    "express-rate-limit": "^7.2.0",
+    "express-validator": "^7.0.1",
+    "groq-sdk": "^1.1.2",
+    "handlebars": "^4.7.9",
+    "helmet": "^7.1.0",
+    "jsonwebtoken": "^9.0.2",
+    "morgan": "^1.10.0",
+    "puppeteer": "^22.4.0",
+    "sharp": "^0.34.5",
+    "uuid": "^9.0.0"
+  },
+  "build": {
+    "appId": "cl.onyria.presupuestos",
+    "productName": "Onyria Studio Presupuestos",
+    "copyright": "Copyright © Onyria Studio SpA",
+    "asar": true,
+    "asarUnpack": [
+      "node_modules/better-sqlite3/**/*",
+      "node_modules/sharp/**/*",
+      "node_modules/@img/**/*",
+      "node_modules/@xenova/**/*",
+      "node_modules/onnxruntime-node/**/*",
+      "node_modules/onnxruntime-web/**/*",
+      "node_modules/puppeteer/**/*",
+      "client/dist/**/*",
+      "server/data/**/*",
+      "server/templates/**/*",
+      "server/src/pdf/assets/**/*",
+      "server/src/pdf/templates/**/*",
+      "server/src/db/migrations-sqlite/**/*"
+    ],
+    "files": [
+      "electron-app/**/*",
+      "client/dist/**/*",
+      "server/src/**/*",
+      "server/package.json",
+      "node_modules/**/*",
+      "package.json",
+      "!**/.git/**",
+      "!**/*.log",
+      "!**/node_modules/*/{CHANGELOG.md,README.md,README,readme.md,readme}",
+      "!**/node_modules/*/{test,__tests__,tests,powered-test,example,examples}",
+      "!**/*.{md,markdown}",
+      "!**/.DS_Store",
+      "!server/data/test-*.pdf",
+      "!server/data/header-*.png",
+      "!server/data/header-*.jpg",
+      "!server/data/raw-*.pdf"
+    ],
+    "directories": {
+      "buildResources": "electron-app",
+      "output": "dist-electron"
+    },
+    "win": {
+      "icon": "electron-app/icon.ico",
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "artifactName": "OnyriaStudioPresupuestosSetup-${version}.${ext}"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Onyria Studio Presupuestos",
+      "installerIcon": "electron-app/icon.ico",
+      "uninstallerIcon": "electron-app/icon.ico",
+      "uninstallDisplayName": "Onyria Studio Presupuestos",
+      "deleteAppDataOnUninstall": false
+    },
+    "npmRebuild": true
   }
 }
