@@ -10,9 +10,25 @@ import {
   formatMonto, getCat,
 } from '../components/theme'
 
-const CATEGORIAS_VALIDAS = ['sonorizacion','locucion','musica_original','musica_archivo','casting','podcast','otro']
+// Lista de categorías válidas → tomada de theme.js (CATEGORIAS) para
+// que siempre coincidan con las que se usan en el resto de la UI.
+// Comparación case-insensitive en validate (acepta 'Estudio', 'estudio', 'ESTUDIO').
+const CATEGORIAS_VALIDAS = CATEGORIAS.map(c => c.id)
 const MONEDAS_VALIDAS    = ['CLP','USD']
 const UNIDADES_VALIDAS   = ['por pieza','por minuto','por hora','por episodio','por idioma','por proyecto','por hito','por día']
+
+// Normaliza un texto para comparación: minúsculas, sin tildes, trim
+function normCat(s) {
+  return String(s || '').trim().toLowerCase()
+    .normalize('NFD').replace(/[̀-ͯ]/g, '')
+}
+// Devuelve la versión canónica de la categoría (la que está en CATEGORIAS)
+// o null si no matchea ninguna.
+function matchCategoria(input) {
+  const n = normCat(input)
+  if (!n) return null
+  return CATEGORIAS_VALIDAS.find(c => normCat(c) === n) || null
+}
 
 const CAT_OPTIONS  = CATEGORIAS.map(c => ({ value: c.id, label: c.label }))
 const UNIT_OPTIONS = UNIDADES.map(u => ({ value: u, label: u }))
@@ -246,8 +262,8 @@ export default function Servicios({ addToast }) {
   // ── Excel template download ────────────────────────────────────────────────
   function descargarPlantilla() {
     const ejemplos = [
-      { nombre: 'Sonorizacion 30 seg TV Digital', categoria: 'sonorizacion',   subcategoria: 'Post Publicitaria',  descripcion: 'Post produccion publicitaria TV Digital', precio_base: 150000, porcentaje_boleta: 20, unidad: 'por pieza', moneda: 'CLP', activo: 'si', aliases: 'mix, sonido',           tags: 'tv, digital, comercial', casos_uso: 'Cotizacion publicitaria 30 segundos',   no_aplica: 'doblaje, masterizacion', excel_cell: 'A15' },
-      { nombre: 'Locucion 15 seg Solo Digital',   categoria: 'locucion',       subcategoria: 'Locucion Comercial', descripcion: 'Locucion derechos Solo Digital',          precio_base: 80000,  porcentaje_boleta: 0,  unidad: 'por pieza', moneda: 'CLP', activo: 'si', aliases: 'voz, voz en off, locutor', tags: 'digital, comercial',     casos_uso: 'Locucion corta para spots digitales',   no_aplica: 'mezcla, masterizacion',  excel_cell: 'B22' },
+      { nombre: 'Sonorizacion 30 seg TV Digital', categoria: 'Estudio',        subcategoria: 'Post Publicitaria',  descripcion: 'Post produccion publicitaria TV Digital', precio_base: 150000, porcentaje_boleta: 20, unidad: 'por pieza', moneda: 'CLP', activo: 'si', aliases: 'mix, sonido',           tags: 'tv, digital, comercial', casos_uso: 'Cotizacion publicitaria 30 segundos',   no_aplica: 'doblaje, masterizacion', excel_cell: 'A15' },
+      { nombre: 'Locucion 15 seg Solo Digital',   categoria: 'Locutor',        subcategoria: 'Locucion Comercial', descripcion: 'Locucion derechos Solo Digital',          precio_base: 80000,  porcentaje_boleta: 0,  unidad: 'por pieza', moneda: 'CLP', activo: 'si', aliases: 'voz, voz en off, locutor', tags: 'digital, comercial',     casos_uso: 'Locucion corta para spots digitales',   no_aplica: 'mezcla, masterizacion',  excel_cell: 'B22' },
       { nombre: 'Musica Archivo TV',              categoria: 'musica_archivo', subcategoria: 'Licencia',           descripcion: 'Licencia musica de archivo para TV',      precio_base: 200,    porcentaje_boleta: 10, unidad: 'por pieza', moneda: 'USD', activo: 'si', aliases: 'stock, library',         tags: 'tv, licencia',           casos_uso: 'Uso de musica licenciada en TV',        no_aplica: 'composicion original',    excel_cell: ''    },
     ]
     const ws = XLSX.utils.json_to_sheet(ejemplos)
@@ -310,7 +326,8 @@ export default function Servicios({ addToast }) {
       const preview = []
       for (const [i, row] of rows.entries()) {
         const nombre            = String(row.nombre || '').trim()
-        const categoria         = String(row.categoria || '').trim().toLowerCase()
+        const categoriaRaw      = String(row.categoria || '').trim()
+        const categoria         = matchCategoria(categoriaRaw)
         const subcategoria      = String(row.subcategoria || '').trim()
         const precio            = parseFloat(String(row.precio_base).replace(',', '.')) || 0
         const porcentajeBoleta  = parseFloat(String(row.porcentaje_boleta || '0').replace(',', '.')) || 0
@@ -327,7 +344,7 @@ export default function Servicios({ addToast }) {
         // Validar
         let error = null
         if (!nombre) error = 'Nombre vacío'
-        else if (!CATEGORIAS_VALIDAS.includes(categoria)) error = `Categoría inválida: "${categoria}"`
+        else if (!categoria) error = `Categoría inválida: "${categoriaRaw}". Válidas: ${CATEGORIAS_VALIDAS.join(' | ')}`
         else if (!MONEDAS_VALIDAS.includes(moneda)) error = `Moneda inválida: "${moneda}"`
         else if (excel_cell && !EXCEL_CELL_REGEX.test(excel_cell)) error = `excel_cell inválido: "${excel_cell}" (esperado A15, B22, AA105)`
 
