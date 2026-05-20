@@ -23,13 +23,31 @@ function refreshEmbeddingAsync(serviceId) {
  * - aliases/tags se almacenan como JSON serializado (array de strings).
  * - casos_uso/no_aplica son texto libre (los normalizamos a CSV limpio sin duplicados).
  * - subcategoria es texto libre.
+ *
+ * Defensa: si el input es una string que parece JSON (ej. '["a","b"]')
+ * la parseamos antes de tratarla como CSV. Evita corrupción acumulativa
+ * cuando el frontend devuelve el campo sin convertir.
  */
+function unwrapMaybeJson(val) {
+  if (Array.isArray(val)) return val
+  if (typeof val !== 'string') return val
+  const t = val.trim()
+  if (!t.startsWith('[')) return val
+  try {
+    const parsed = JSON.parse(t)
+    if (Array.isArray(parsed)) {
+      // Flatten en caso de datos previos corruptos (arrays anidados)
+      return parsed.flat(Infinity).map(s => String(s).trim()).filter(Boolean)
+    }
+  } catch { /* no era JSON válido */ }
+  return val
+}
 function arrayToJson(val) {
-  const list = csvToList(val)
+  const list = csvToList(unwrapMaybeJson(val))
   return list.length ? JSON.stringify(list) : null
 }
 function csvText(val) {
-  const list = csvToList(val)
+  const list = csvToList(unwrapMaybeJson(val))
   return list.length ? list.join(', ') : null
 }
 

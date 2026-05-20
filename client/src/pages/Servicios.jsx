@@ -44,10 +44,26 @@ const EMPTY = {
 // Regex de validación de celda Excel: una o más letras + uno o más números
 const EXCEL_CELL_REGEX = /^[A-Z]+[0-9]+$/
 
-// Convierte aliases/tags (que vienen como array JSON desde la BD) a CSV para el textarea
+// Convierte aliases/tags (que vienen como array JSON desde la BD) a CSV para el textarea.
+// Soporta: array, JSON string ('["a","b"]'), CSV string, null.
 function toCsv(val) {
+  if (val == null || val === '') return ''
   if (Array.isArray(val)) return val.join(', ')
-  return val || ''
+  if (typeof val === 'string') {
+    const trimmed = val.trim()
+    // Si parece JSON array, parsear y devolver CSV
+    if (trimmed.startsWith('[')) {
+      try {
+        const parsed = JSON.parse(trimmed)
+        if (Array.isArray(parsed)) {
+          // Manejar también arrays anidados (datos corruptos del bug anterior)
+          return parsed.flat(Infinity).map(s => String(s).trim()).filter(Boolean).join(', ')
+        }
+      } catch { /* no era JSON válido, devolver tal cual */ }
+    }
+    return trimmed
+  }
+  return String(val)
 }
 
 // ── Column definitions ─────────────────────────────────────────────────────
