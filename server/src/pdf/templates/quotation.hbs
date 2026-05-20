@@ -30,11 +30,12 @@
     /* ── A4: márgenes horizontales en 0 para que header.png/footer.png
        lleguen al borde. El padding horizontal del contenido se aplica via
        body abajo. top=36mm reserva espacio para header.png + N°/fecha.
-       bottom=95mm reserva espacio para todo el bloque footer (observaciones,
-       forma de pago, condiciones, empresa, footer.png). */
+       bottom=115mm reserva espacio para todo el bloque footer (observaciones,
+       forma de pago, condiciones, empresa, footer.png). DEBE coincidir con
+       el margin.bottom de page.pdf() en pdf-generator.js. */
     @page {
       size: A4;
-      margin: 36mm 0 95mm 0;
+      margin: 36mm 0 115mm 0;
     }
 
     body { padding: 0 18mm; }

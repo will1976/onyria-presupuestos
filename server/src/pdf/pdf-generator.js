@@ -268,12 +268,11 @@ async function generarPDF(input) {
       headerTemplate: await buildHeaderHtml(data),
       footerTemplate: await buildFooterHtml(data),
       // left/right en 0 para que header.png y footer.png lleguen al borde.
-      // El padding horizontal del contenido lo aplica body { padding: 0 18mm; } en el .hbs
-      // bottom 95mm reserva espacio para Observaciones + Forma de Pago + Condiciones
-      // + Empresa + footer.png, que se repiten en CADA página vía footerTemplate.
-      // Los Totales (Total Neto/IVA/TOTAL) quedan en el body → solo aparecen al final
-      // del detalle (última página).
-      margin: { top: '36mm', bottom: '95mm', left: '0', right: '0' },
+      // El padding horizontal del contenido lo aplica body { padding: 0 18mm; } en el .hbs.
+      // bottom 115mm reserva espacio para todo el bloque inferior repetido en cada página:
+      //   Observaciones + Forma de Pago + Condiciones + Empresa + footer.png ≈ 106-110mm.
+      //   Usamos 115mm de safety para evitar que el body se solape cuando el footer crece.
+      margin: { top: '36mm', bottom: '115mm', left: '0', right: '0' },
       preferCSSPageSize: false,
     })
 
