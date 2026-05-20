@@ -21,7 +21,12 @@ const EMPTY = {
   precio_base: 0, unidad: 'por pieza', moneda: 'CLP', activo: true, porcentaje_boleta: 0,
   // Metadata semántica para el pipeline IA v2
   aliases: '', tags: '', casos_uso: '', no_aplica: '', subcategoria: '',
+  // Celda fija en el Excel de exportación (ej: A15)
+  excel_cell: '',
 }
+
+// Regex de validación de celda Excel: una o más letras + uno o más números
+const EXCEL_CELL_REGEX = /^[A-Z]+[0-9]+$/
 
 // Convierte aliases/tags (que vienen como array JSON desde la BD) a CSV para el textarea
 function toCsv(val) {
@@ -136,6 +141,7 @@ export default function Servicios({ addToast }) {
       casos_uso:    s.casos_uso    || '',
       no_aplica:    s.no_aplica    || '',
       subcategoria: s.subcategoria || '',
+      excel_cell:   s.excel_cell   || '',
     })
     setErrors({})
     setModal({ mode: 'editar', id: s.id })
@@ -144,6 +150,9 @@ export default function Servicios({ addToast }) {
   function validate() {
     const e = {}
     if (!form.nombre.trim()) e.nombre = 'Requerido'
+    if (form.excel_cell && !EXCEL_CELL_REGEX.test(form.excel_cell.trim().toUpperCase())) {
+      e.excel_cell = 'Formato inválido. Ej: A15, B22, AA105'
+    }
     setErrors(e)
     return Object.keys(e).length === 0
   }
@@ -637,6 +646,13 @@ export default function Servicios({ addToast }) {
               onChange={v => setField('no_aplica', v)}
               placeholder="doblaje, mezcla, masterización"
               rows={2}
+            />
+            <Input
+              label="Celda Excel"
+              value={form.excel_cell}
+              onChange={v => setField('excel_cell', v.toUpperCase())}
+              placeholder="Ej: A15"
+              error={errors.excel_cell}
             />
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>

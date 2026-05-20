@@ -1,8 +1,11 @@
 const ExcelJS = require('exceljs')
 const path    = require('path')
 const fs      = require('fs')
+const { groupServicesByExcelCell, parseExcelCell, safeExcelCell } = require('./excelCell')
 
 const TEMPLATE_PATH = path.join(__dirname, '../../templates/Template Excel Presupuesto.xlsx')
+
+const log = (msg) => console.log(`[Excel Export] ${msg}`)
 
 // ── Normalización ─────────────────────────────────────────────────────────────
 function norm(s) {
@@ -144,56 +147,70 @@ async function getDiff(items) {
   return { hasTemplate: true, diffs }
 }
 
+// ── Encuentra la última fila ocupada de un worksheet ──────────────────────────
+function findLastUsedRow(ws) {
+  let last = 0
+  ws.eachRow({ includeEmpty: false }, (row, rowNumber) => {
+    // Considerar fila "ocupada" si tiene al menos una celda con valor
+    let hasValue = false
+    row.eachCell({ includeEmpty: false }, (cell) => {
+      if (cell.value !== null && cell.value !== undefined && cell.value !== '') {
+        hasValue = true
+      }
+    })
+    if (hasValue && rowNumber > last) last = rowNumber
+  })
+  return last
+}
+
 // ── Genera el Excel relleno ───────────────────────────────────────────────────
-// opcionesPrecio: { [normName]: 'app' | 'template' }
+// Lógica nueva (excel_cell):
+//   1. Cada ítem del presupuesto se mira contra el excel_cell de su servicio
+//      (campo `servicio_excel_cell` provisto por el JOIN del controller, o
+//      `excel_cell` directo en el item).
+//   2. Si tiene celda → se agrupan los ítems por celda y se SUMAN las cantidades.
+//      En el Excel se escribe SOLO el número (no el nombre).
+//   3. Si NO tiene celda → se agrega al final del worksheet:
+//        col A = nombre del servicio
+//        col B = cantidad
+//
+// opcionesPrecio se mantiene para compatibilidad con el flujo de "diff de
+// precios" (ITEM_MAP). Si en el futuro se elimina, sacar también el parámetro.
 async function generarExcelTemplate(presupuesto, opcionesPrecio = {}) {
   const wb = new ExcelJS.Workbook()
   await wb.xlsx.readFile(TEMPLATE_PATH)
   const ws = wb.worksheets[0]
 
-  // Copia mutable de filas vacías para no agotar el array original
-  const emptyAvail = {}
-  for (const [sec, rows] of Object.entries(EMPTY_ROWS)) {
-    emptyAvail[sec] = [...rows]
+  const items = presupuesto.items || []
+  log(`Grouping services... (${items.length} items)`)
+
+  // Normalizar cada item para que tenga excel_cell efectivo
+  const itemsForGroup = items.map(it => ({
+    ...it,
+    excel_cell: safeExcelCell(it.excel_cell || it.servicio_excel_cell),
+    cantidad:   parseFloat(it.cantidad) || 0,
+  }))
+
+  const { mapped, unmapped } = groupServicesByExcelCell(itemsForGroup)
+
+  // 1) Escribir cantidades agrupadas en sus celdas
+  for (const [cell, qty] of Object.entries(mapped)) {
+    const parsed = parseExcelCell(cell)
+    if (!parsed) continue
+    ws.getRow(parsed.row).getCell(parsed.colIndex).value = qty
+    log(`Cell ${cell} = ${qty}`)
   }
 
-  for (const item of presupuesto.items || []) {
-    const rawName   = item.descripcion_personalizada || item.servicio_nombre || ''
-    const normName  = norm(rawName)
-    const precioApp = parseFloat(item.precio_unitario) || 0
-    const qty       = parseFloat(item.cantidad) || 0
-    const boleta    = parseFloat(item.porcentaje_boleta) || 0
-
-    // Buscar posición en el mapa
-    let pos = findInMap(normName)
-
-    // Si no hay match, usar fila vacía de la sección correspondiente
-    if (!pos) {
-      const section = CAT_TO_SECTION[item.categoria] || 'estudio'
-      const avail   = emptyAvail[section]
-      if (avail && avail.length > 0) {
-        pos = avail.shift()
-        // Escribir nombre en la celda de nombre
-        ws.getRow(pos.row).getCell(pos.nameCol).value = rawName
-      }
-    }
-
-    if (!pos) continue
-
-    const mapKey = Object.keys(ITEM_MAP).find(k => ITEM_MAP[k] === pos) || normName
-    const row    = ws.getRow(pos.row)
-
-    // Cantidad: siempre se actualiza
-    row.getCell(pos.qtyCol).value = qty
-
-    // Precio: se usa el del template solo cuando el usuario eligió explícitamente 'template'
-    if (opcionesPrecio[mapKey] !== 'template' && precioApp > 0) {
-      row.getCell(pos.priceCol).value = precioApp
-    }
-
-    // % Boleta: si la sección lo tiene
-    if (pos.boletaCol && boleta > 0) {
-      row.getCell(pos.boletaCol).value = boleta
+  // 2) Items sin excel_cell → append al final con nombre + cantidad
+  if (unmapped.length > 0) {
+    let appendRow = findLastUsedRow(ws) + 1
+    for (const it of unmapped) {
+      const nombre = it.descripcion_personalizada || it.servicio_nombre || '(sin nombre)'
+      const qty    = parseFloat(it.cantidad) || 0
+      ws.getRow(appendRow).getCell(1).value = nombre
+      ws.getRow(appendRow).getCell(2).value = qty
+      log(`Unmapped service appended: ${nombre}`)
+      appendRow++
     }
   }
 

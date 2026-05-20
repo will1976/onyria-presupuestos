@@ -1,6 +1,7 @@
 const { query }    = require('../db')
 const { csvToList } = require('../ai/utils/textNormalizer')
 const { updateServiceEmbedding } = require('../ai/jobs/updateServiceEmbedding')
+const { validateExcelCell } = require('../utils/excelCell')
 
 /**
  * Fire-and-forget: regenera el embedding del servicio en background.
@@ -69,16 +70,21 @@ async function crear(req, res, next) {
   try {
     const {
       nombre, categoria, descripcion, precio_base, unidad, moneda, activo, porcentaje_boleta,
-      aliases, tags, casos_uso, no_aplica, subcategoria,
+      aliases, tags, casos_uso, no_aplica, subcategoria, excel_cell,
     } = req.body
     if (!nombre) return res.status(400).json({ success: false, error: 'El nombre es requerido' })
+
+    const cellCheck = validateExcelCell(excel_cell)
+    if (!cellCheck.ok) {
+      return res.status(400).json({ success: false, error: cellCheck.error })
+    }
 
     const { rows } = await query(`
       INSERT INTO servicios (
         nombre, categoria, descripcion, precio_base, unidad, moneda, activo, porcentaje_boleta,
-        aliases, tags, casos_uso, no_aplica, subcategoria
+        aliases, tags, casos_uso, no_aplica, subcategoria, excel_cell
       )
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
       RETURNING *
     `, [
       nombre.trim(), categoria || 'otro', descripcion || null,
@@ -90,6 +96,7 @@ async function crear(req, res, next) {
       csvText(casos_uso),
       csvText(no_aplica),
       subcategoria?.trim() || null,
+      cellCheck.value,
     ])
 
     // Auto-regenerar embedding del servicio recién creado (fire-and-forget)
@@ -104,8 +111,13 @@ async function actualizar(req, res, next) {
   try {
     const {
       nombre, categoria, descripcion, precio_base, unidad, moneda, activo, porcentaje_boleta,
-      aliases, tags, casos_uso, no_aplica, subcategoria,
+      aliases, tags, casos_uso, no_aplica, subcategoria, excel_cell,
     } = req.body
+
+    const cellCheck = validateExcelCell(excel_cell)
+    if (!cellCheck.ok) {
+      return res.status(400).json({ success: false, error: cellCheck.error })
+    }
 
     const { rows } = await query(`
       UPDATE servicios SET
@@ -121,8 +133,9 @@ async function actualizar(req, res, next) {
         tags               = $10,
         casos_uso          = $11,
         no_aplica          = $12,
-        subcategoria       = $13
-      WHERE id = $14
+        subcategoria       = $13,
+        excel_cell         = $14
+      WHERE id = $15
       RETURNING *
     `, [
       nombre?.trim() || null, categoria || null, descripcion ?? null,
@@ -135,6 +148,7 @@ async function actualizar(req, res, next) {
       csvText(casos_uso),
       csvText(no_aplica),
       subcategoria !== undefined ? (subcategoria?.trim() || null) : null,
+      cellCheck.value,
       req.params.id,
     ])
 

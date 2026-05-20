@@ -21,7 +21,9 @@ async function getPresupuestoCompleto(id) {
   if (!p) return null
 
   const { rows: items } = await query(`
-    SELECT pi.*, s.nombre AS servicio_nombre
+    SELECT pi.*,
+           s.nombre     AS servicio_nombre,
+           s.excel_cell AS servicio_excel_cell
     FROM presupuesto_items pi
     LEFT JOIN servicios s ON s.id = pi.servicio_id
     WHERE pi.presupuesto_id = $1
