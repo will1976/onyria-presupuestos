@@ -227,50 +227,77 @@ async function generarExcelTemplate(presupuesto, opcionesPrecio = {}) {
     }
   })
 
-  const { mapped, unmapped } = groupServicesByExcelCell(itemsForGroup)
-
-  // Por cada celda mapeada, tomar el precio unitario del primer item con
-  // ese excel_cell que tenga precio > 0 (items que comparten celda suelen
-  // representar el mismo servicio lógico, así que comparten precio).
-  const priceByCell = {}
+  // ── Agrupación por servicio único (descripcion + precio) ──────────────────
+  // Antes se agrupaba por excel_cell, lo que perdía info de precios cuando dos
+  // servicios distintos con precios distintos compartían la misma celda.
+  //
+  // Nueva lógica:
+  //  - Items con misma descripcion y mismo precio → suman cantidades (es el
+  //    mismo servicio lógico repetido en el presupuesto).
+  //  - Servicios DISTINTOS (descripcion o precio diferente) → cada uno conserva
+  //    su línea propia. Si comparten excel_cell, el segundo se desplaza una
+  //    fila abajo (collision handling).
+  const uniqueServices = new Map()
   for (const it of itemsForGroup) {
-    if (!it.excel_cell) continue
-    const p = parseFloat(it.precio_unitario) || 0
-    if (p > 0 && priceByCell[it.excel_cell] == null) {
-      priceByCell[it.excel_cell] = p
+    const nombre = (it.descripcion_personalizada || it.servicio_nombre || '').trim()
+    const price  = parseFloat(it.precio_unitario) || 0
+    const key    = `${nombre.toLowerCase()}|${price}`
+
+    if (uniqueServices.has(key)) {
+      uniqueServices.get(key).cantidad += parseFloat(it.cantidad) || 0
+    } else {
+      uniqueServices.set(key, {
+        nombre,
+        precio:     price,
+        cantidad:   parseFloat(it.cantidad) || 0,
+        excel_cell: it.excel_cell,
+      })
     }
   }
 
-  // 1) Escribir cantidades + precios unitarios agrupados.
-  //    Cantidad va en la celda configurada (ej: C9)
-  //    Precio unitario va en la columna anterior, misma fila (ej: B9)
-  for (const [cell, qty] of Object.entries(mapped)) {
-    const parsed = parseExcelCell(cell)
+  log(`Unique services: ${uniqueServices.size}`)
+
+  // Separar en mapeados (tienen excel_cell) y no mapeados
+  const mappedServices   = []
+  const unmappedServices = []
+  for (const s of uniqueServices.values()) {
+    if (s.excel_cell) mappedServices.push(s)
+    else              unmappedServices.push(s)
+  }
+
+  // 1) Escribir cada servicio mapeado en su celda configurada.
+  //    Si dos servicios distintos colisionan en la misma celda, el segundo
+  //    se desplaza una fila abajo, y así sucesivamente.
+  const usedRows = new Set()  // claves "col:row" ya ocupadas
+  for (const s of mappedServices) {
+    const parsed = parseExcelCell(s.excel_cell)
     if (!parsed) continue
 
-    // Cantidad
-    ws.getRow(parsed.row).getCell(parsed.colIndex).value = qty
-    log(`Cell ${cell} = ${qty}`)
+    // Encontrar el primer (col, row) libre desde la celda configurada hacia abajo
+    let r = parsed.row
+    while (usedRows.has(`${parsed.colIndex}:${r}`)) r++
+    usedRows.add(`${parsed.colIndex}:${r}`)
 
-    // Precio unitario (columna anterior, misma fila). Solo si colIndex > 1.
-    const price = priceByCell[cell]
-    if (price && parsed.colIndex > 1) {
-      ws.getRow(parsed.row).getCell(parsed.colIndex - 1).value = price
-      log(`Cell ${columnLetter(parsed.colIndex - 1)}${parsed.row} (precio) = ${price}`)
+    // Escribir cantidad y precio
+    ws.getRow(r).getCell(parsed.colIndex).value = s.cantidad
+    const qtyCellTag = `${columnLetter(parsed.colIndex)}${r}`
+    log(`${qtyCellTag} qty=${s.cantidad} (${s.nombre})`)
+
+    if (s.precio > 0 && parsed.colIndex > 1) {
+      ws.getRow(r).getCell(parsed.colIndex - 1).value = s.precio
+      const priceCellTag = `${columnLetter(parsed.colIndex - 1)}${r}`
+      log(`${priceCellTag} precio=${s.precio}`)
     }
   }
 
-  // 2) Items sin excel_cell → append al final con nombre + precio + cantidad
-  if (unmapped.length > 0) {
+  // 2) Servicios sin excel_cell → append al final
+  if (unmappedServices.length > 0) {
     let appendRow = findLastUsedRow(ws) + 1
-    for (const it of unmapped) {
-      const nombre = it.descripcion_personalizada || it.servicio_nombre || '(sin nombre)'
-      const qty    = parseFloat(it.cantidad) || 0
-      const price  = parseFloat(it.precio_unitario) || 0
-      ws.getRow(appendRow).getCell(1).value = nombre   // A: nombre
-      ws.getRow(appendRow).getCell(2).value = price    // B: precio unitario
-      ws.getRow(appendRow).getCell(3).value = qty      // C: cantidad
-      log(`Unmapped service appended: ${nombre} (precio=${price}, qty=${qty})`)
+    for (const s of unmappedServices) {
+      ws.getRow(appendRow).getCell(1).value = s.nombre    // A: nombre
+      ws.getRow(appendRow).getCell(2).value = s.precio    // B: precio
+      ws.getRow(appendRow).getCell(3).value = s.cantidad  // C: cantidad
+      log(`Unmapped appended at row ${appendRow}: ${s.nombre} (precio=${s.precio}, qty=${s.cantidad})`)
       appendRow++
     }
   }
