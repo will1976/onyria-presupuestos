@@ -28,11 +28,15 @@ module.exports = {
   },
   search: {
     threshold:           parseFloat(process.env.SIMILARITY_THRESHOLD) || 0.35,
-    topK:                parseInt(process.env.TOP_K_CANDIDATES, 10)    || 5,
+    // topK ampliado de 5 a 8: deja más diversidad de categorías en candidates
+    // (ej: si intent='Locutor', los 5 primeros suelen ser todos Locutor por el
+    // boost, sin dejar espacio a Personajes/Doblajes u otros relacionados)
+    topK:                parseInt(process.env.TOP_K_CANDIDATES, 10)    || 8,
     autoSelectThreshold: parseFloat(process.env.AUTO_SELECT_THRESHOLD) || 0.85,
     suggestThreshold:    parseFloat(process.env.SUGGEST_THRESHOLD)     || 0.60,
-    // Multiplicador aplicado al similarity_score de servicios cuya categoría
-    // coincide con la detectada por la IA. 1.0 = sin boost. Recomendado 1.10-1.25.
-    categoryBoost:       parseFloat(process.env.CATEGORY_BOOST_MULTIPLIER) || 1.15,
+    // Boost aplicado a servicios cuya categoría matchea con la detectada por
+    // la IA. Bajado de 1.15 a 1.08 para no monopolizar el ranking cuando el
+    // intent es ambiguo (ej: 'voces' puede ser Locutor o Personajes).
+    categoryBoost:       parseFloat(process.env.CATEGORY_BOOST_MULTIPLIER) || 1.08,
   },
 }
