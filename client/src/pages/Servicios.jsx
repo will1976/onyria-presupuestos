@@ -207,15 +207,36 @@ export default function Servicios({ addToast }) {
     const data = servicios.map(s => ({
       nombre:             s.nombre,
       categoria:          s.categoria,
+      subcategoria:       s.subcategoria || '',
       descripcion:        s.descripcion || '',
       precio_base:        s.precio_base,
       porcentaje_boleta:  parseFloat(s.porcentaje_boleta) || 0,
       unidad:             s.unidad,
       moneda:             s.moneda,
       activo:             s.activo ? 'si' : 'no',
+      aliases:            toCsv(s.aliases),
+      tags:               toCsv(s.tags),
+      casos_uso:          s.casos_uso || '',
+      no_aplica:          s.no_aplica || '',
+      excel_cell:         s.excel_cell || '',
     }))
     const ws = XLSX.utils.json_to_sheet(data)
-    ws['!cols'] = [{ wch: 40 }, { wch: 20 }, { wch: 50 }, { wch: 14 }, { wch: 14 }, { wch: 16 }, { wch: 8 }, { wch: 8 }]
+    ws['!cols'] = [
+      { wch: 40 },  // nombre
+      { wch: 20 },  // categoria
+      { wch: 22 },  // subcategoria
+      { wch: 50 },  // descripcion
+      { wch: 14 },  // precio_base
+      { wch: 14 },  // porcentaje_boleta
+      { wch: 16 },  // unidad
+      { wch: 8 },   // moneda
+      { wch: 8 },   // activo
+      { wch: 40 },  // aliases
+      { wch: 30 },  // tags
+      { wch: 50 },  // casos_uso
+      { wch: 40 },  // no_aplica
+      { wch: 12 },  // excel_cell
+    ]
     const wb = XLSX.utils.book_new()
     XLSX.utils.book_append_sheet(wb, ws, 'Servicios')
     XLSX.writeFile(wb, 'catalogo_servicios_onyria.xlsx')
@@ -225,26 +246,47 @@ export default function Servicios({ addToast }) {
   // ── Excel template download ────────────────────────────────────────────────
   function descargarPlantilla() {
     const ejemplos = [
-      { nombre: 'Sonorizacion 30 seg TV Digital', categoria: 'sonorizacion',   descripcion: 'Post produccion publicitaria TV Digital', precio_base: 150000, porcentaje_boleta: 20, unidad: 'por pieza', moneda: 'CLP', activo: 'si' },
-      { nombre: 'Locucion 15 seg Solo Digital',   categoria: 'locucion',       descripcion: 'Locucion derechos Solo Digital',          precio_base: 80000,  porcentaje_boleta: 0,  unidad: 'por pieza', moneda: 'CLP', activo: 'si' },
-      { nombre: 'Musica Archivo TV',              categoria: 'musica_archivo', descripcion: 'Licencia musica de archivo para TV',      precio_base: 200,    porcentaje_boleta: 10, unidad: 'por pieza', moneda: 'USD', activo: 'si' },
+      { nombre: 'Sonorizacion 30 seg TV Digital', categoria: 'sonorizacion',   subcategoria: 'Post Publicitaria',  descripcion: 'Post produccion publicitaria TV Digital', precio_base: 150000, porcentaje_boleta: 20, unidad: 'por pieza', moneda: 'CLP', activo: 'si', aliases: 'mix, sonido',           tags: 'tv, digital, comercial', casos_uso: 'Cotizacion publicitaria 30 segundos',   no_aplica: 'doblaje, masterizacion', excel_cell: 'A15' },
+      { nombre: 'Locucion 15 seg Solo Digital',   categoria: 'locucion',       subcategoria: 'Locucion Comercial', descripcion: 'Locucion derechos Solo Digital',          precio_base: 80000,  porcentaje_boleta: 0,  unidad: 'por pieza', moneda: 'CLP', activo: 'si', aliases: 'voz, voz en off, locutor', tags: 'digital, comercial',     casos_uso: 'Locucion corta para spots digitales',   no_aplica: 'mezcla, masterizacion',  excel_cell: 'B22' },
+      { nombre: 'Musica Archivo TV',              categoria: 'musica_archivo', subcategoria: 'Licencia',           descripcion: 'Licencia musica de archivo para TV',      precio_base: 200,    porcentaje_boleta: 10, unidad: 'por pieza', moneda: 'USD', activo: 'si', aliases: 'stock, library',         tags: 'tv, licencia',           casos_uso: 'Uso de musica licenciada en TV',        no_aplica: 'composicion original',    excel_cell: ''    },
     ]
     const ws = XLSX.utils.json_to_sheet(ejemplos)
-    ws['!cols'] = [{ wch: 40 }, { wch: 20 }, { wch: 50 }, { wch: 14 }, { wch: 16 }, { wch: 16 }, { wch: 8 }, { wch: 8 }]
+    ws['!cols'] = [
+      { wch: 40 },  // nombre
+      { wch: 20 },  // categoria
+      { wch: 22 },  // subcategoria
+      { wch: 50 },  // descripcion
+      { wch: 14 },  // precio_base
+      { wch: 16 },  // porcentaje_boleta
+      { wch: 16 },  // unidad
+      { wch: 8 },   // moneda
+      { wch: 8 },   // activo
+      { wch: 40 },  // aliases
+      { wch: 30 },  // tags
+      { wch: 50 },  // casos_uso
+      { wch: 40 },  // no_aplica
+      { wch: 12 },  // excel_cell
+    ]
 
-    // Agregar nota con categorías válidas en una segunda hoja
+    // Agregar nota con campos válidos en una segunda hoja
     const wsInfo = XLSX.utils.aoa_to_sheet([
-      ['CAMPO',              'VALORES VÁLIDOS',                                                            'OBLIGATORIO'],
-      ['nombre',             'Texto libre',                                                                 'Sí'],
-      ['categoria',          CATEGORIAS_VALIDAS.join(' | '),                                               'Sí'],
-      ['descripcion',        'Texto libre',                                                                 'No'],
-      ['precio_base',        'Número (ej: 150000)',                                                        'Sí'],
-      ['porcentaje_boleta',  'Número entre 0 y 100 (ej: 20)',                                             'No (default: 0)'],
-      ['unidad',             UNIDADES_VALIDAS.join(' | '),                                                 'Sí'],
-      ['moneda',             'CLP | USD',                                                                  'Sí'],
-      ['activo',             'si | no',                                                                    'No (default: si)'],
+      ['CAMPO',              'VALORES VÁLIDOS',                                              'OBLIGATORIO'],
+      ['nombre',             'Texto libre',                                                  'Sí'],
+      ['categoria',          CATEGORIAS_VALIDAS.join(' | '),                                 'Sí'],
+      ['subcategoria',       'Texto libre (ej: Locución Comercial)',                         'No'],
+      ['descripcion',        'Texto libre',                                                  'No'],
+      ['precio_base',        'Número (ej: 150000)',                                          'Sí'],
+      ['porcentaje_boleta',  'Número entre 0 y 100 (ej: 20)',                                'No (default: 0)'],
+      ['unidad',             UNIDADES_VALIDAS.join(' | '),                                   'Sí'],
+      ['moneda',             'CLP | USD',                                                    'Sí'],
+      ['activo',             'si | no',                                                      'No (default: si)'],
+      ['aliases',            'CSV: "casting voces, audiciones, locutores" (búsqueda IA)',    'No'],
+      ['tags',               'CSV: "tv, radio, publicidad" (búsqueda IA)',                   'No'],
+      ['casos_uso',          'Texto libre (búsqueda IA)',                                    'No'],
+      ['no_aplica',          'CSV: "doblaje, mezcla, masterización" (evita falsos positivos IA)', 'No'],
+      ['excel_cell',         'Celda fija para exportación Excel. Formato: A15, B22, AA105',  'No'],
     ])
-    wsInfo['!cols'] = [{ wch: 16 }, { wch: 80 }, { wch: 14 }]
+    wsInfo['!cols'] = [{ wch: 18 }, { wch: 80 }, { wch: 18 }]
 
     const wb = XLSX.utils.book_new()
     XLSX.utils.book_append_sheet(wb, ws, 'Servicios')
@@ -269,25 +311,37 @@ export default function Servicios({ addToast }) {
       for (const [i, row] of rows.entries()) {
         const nombre            = String(row.nombre || '').trim()
         const categoria         = String(row.categoria || '').trim().toLowerCase()
+        const subcategoria      = String(row.subcategoria || '').trim()
         const precio            = parseFloat(String(row.precio_base).replace(',', '.')) || 0
         const porcentajeBoleta  = parseFloat(String(row.porcentaje_boleta || '0').replace(',', '.')) || 0
         const unidad            = String(row.unidad || 'por pieza').trim()
         const moneda            = String(row.moneda  || 'CLP').trim().toUpperCase()
         const activo            = String(row.activo  || 'si').trim().toLowerCase() !== 'no'
         const desc              = String(row.descripcion || '').trim()
+        const aliases           = String(row.aliases || '').trim()
+        const tags              = String(row.tags || '').trim()
+        const casos_uso         = String(row.casos_uso || '').trim()
+        const no_aplica         = String(row.no_aplica || '').trim()
+        const excel_cell        = String(row.excel_cell || '').trim().toUpperCase()
 
         // Validar
         let error = null
         if (!nombre) error = 'Nombre vacío'
         else if (!CATEGORIAS_VALIDAS.includes(categoria)) error = `Categoría inválida: "${categoria}"`
         else if (!MONEDAS_VALIDAS.includes(moneda)) error = `Moneda inválida: "${moneda}"`
+        else if (excel_cell && !EXCEL_CELL_REGEX.test(excel_cell)) error = `excel_cell inválido: "${excel_cell}" (esperado A15, B22, AA105)`
 
         if (error) {
           preview.push({ fila: i + 2, nombre: nombre || '—', error, estado: 'error', data: null, existente: null, cambios: [] })
           continue
         }
 
-        const data = { nombre, categoria, descripcion: desc, precio_base: precio, porcentaje_boleta: porcentajeBoleta, unidad, moneda, activo }
+        const data = {
+          nombre, categoria, subcategoria, descripcion: desc,
+          precio_base: precio, porcentaje_boleta: porcentajeBoleta,
+          unidad, moneda, activo,
+          aliases, tags, casos_uso, no_aplica, excel_cell,
+        }
 
         // Buscar si existe por nombre (case-insensitive)
         const existente = servicios.find(s => s.nombre.toLowerCase() === nombre.toLowerCase())
@@ -295,18 +349,26 @@ export default function Servicios({ addToast }) {
         let estado = 'nuevo'
         let cambios = []
         if (existente) {
+          // Helper: normaliza arrays JSON → CSV o cualquier valor → string
+          const asCsv = (v) => Array.isArray(v) ? v.join(', ') : (v || '')
           const CAMPOS = [
             { key: 'categoria',          label: 'Categoría'   },
+            { key: 'subcategoria',       label: 'Subcategoría' },
             { key: 'descripcion',        label: 'Descripción' },
             { key: 'precio_base',        label: 'Precio',     fn: v => parseFloat(v) || 0 },
             { key: 'porcentaje_boleta',  label: '% Boleta',   fn: v => parseFloat(v) || 0 },
             { key: 'unidad',             label: 'Unidad'      },
             { key: 'moneda',             label: 'Moneda'      },
             { key: 'activo',             label: 'Estado'      },
+            { key: 'aliases',            label: 'Aliases',    fn: asCsv },
+            { key: 'tags',               label: 'Tags',       fn: asCsv },
+            { key: 'casos_uso',          label: 'Casos de uso' },
+            { key: 'no_aplica',          label: 'No aplica para' },
+            { key: 'excel_cell',         label: 'Celda Excel' },
           ]
           for (const c of CAMPOS) {
-            const vAntes = c.fn ? c.fn(existente[c.key]) : existente[c.key]
-            const vDespues = c.fn ? c.fn(data[c.key])    : data[c.key]
+            const vAntes   = c.fn ? c.fn(existente[c.key]) : (existente[c.key] ?? '')
+            const vDespues = c.fn ? c.fn(data[c.key])     : (data[c.key]     ?? '')
             if (String(vAntes) !== String(vDespues)) {
               cambios.push({ label: c.label, antes: vAntes, despues: vDespues })
             }
