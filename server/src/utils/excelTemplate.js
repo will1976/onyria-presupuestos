@@ -1,7 +1,7 @@
 const ExcelJS = require('exceljs')
 const path    = require('path')
 const fs      = require('fs')
-const { groupServicesByExcelCell, parseExcelCell, safeExcelCell } = require('./excelCell')
+const { groupServicesByExcelCell, parseExcelCell, safeExcelCell, columnLetter } = require('./excelCell')
 const { query } = require('../db')
 
 const TEMPLATE_PATH = path.join(__dirname, '../../templates/Template Excel Presupuesto.xlsx')
@@ -229,23 +229,48 @@ async function generarExcelTemplate(presupuesto, opcionesPrecio = {}) {
 
   const { mapped, unmapped } = groupServicesByExcelCell(itemsForGroup)
 
-  // 1) Escribir cantidades agrupadas en sus celdas
+  // Por cada celda mapeada, tomar el precio unitario del primer item con
+  // ese excel_cell que tenga precio > 0 (items que comparten celda suelen
+  // representar el mismo servicio lógico, así que comparten precio).
+  const priceByCell = {}
+  for (const it of itemsForGroup) {
+    if (!it.excel_cell) continue
+    const p = parseFloat(it.precio_unitario) || 0
+    if (p > 0 && priceByCell[it.excel_cell] == null) {
+      priceByCell[it.excel_cell] = p
+    }
+  }
+
+  // 1) Escribir cantidades + precios unitarios agrupados.
+  //    Cantidad va en la celda configurada (ej: C9)
+  //    Precio unitario va en la columna anterior, misma fila (ej: B9)
   for (const [cell, qty] of Object.entries(mapped)) {
     const parsed = parseExcelCell(cell)
     if (!parsed) continue
+
+    // Cantidad
     ws.getRow(parsed.row).getCell(parsed.colIndex).value = qty
     log(`Cell ${cell} = ${qty}`)
+
+    // Precio unitario (columna anterior, misma fila). Solo si colIndex > 1.
+    const price = priceByCell[cell]
+    if (price && parsed.colIndex > 1) {
+      ws.getRow(parsed.row).getCell(parsed.colIndex - 1).value = price
+      log(`Cell ${columnLetter(parsed.colIndex - 1)}${parsed.row} (precio) = ${price}`)
+    }
   }
 
-  // 2) Items sin excel_cell → append al final con nombre + cantidad
+  // 2) Items sin excel_cell → append al final con nombre + precio + cantidad
   if (unmapped.length > 0) {
     let appendRow = findLastUsedRow(ws) + 1
     for (const it of unmapped) {
       const nombre = it.descripcion_personalizada || it.servicio_nombre || '(sin nombre)'
       const qty    = parseFloat(it.cantidad) || 0
-      ws.getRow(appendRow).getCell(1).value = nombre
-      ws.getRow(appendRow).getCell(2).value = qty
-      log(`Unmapped service appended: ${nombre}`)
+      const price  = parseFloat(it.precio_unitario) || 0
+      ws.getRow(appendRow).getCell(1).value = nombre   // A: nombre
+      ws.getRow(appendRow).getCell(2).value = price    // B: precio unitario
+      ws.getRow(appendRow).getCell(3).value = qty      // C: cantidad
+      log(`Unmapped service appended: ${nombre} (precio=${price}, qty=${qty})`)
       appendRow++
     }
   }

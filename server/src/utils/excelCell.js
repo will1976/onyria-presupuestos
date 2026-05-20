@@ -34,6 +34,22 @@ function safeExcelCell(raw) {
 }
 
 /**
+ * Convierte un índice de columna 1-based en letra(s) Excel.
+ *   1 → 'A', 26 → 'Z', 27 → 'AA', 702 → 'ZZ'
+ */
+function columnLetter(colIndex) {
+  if (!Number.isInteger(colIndex) || colIndex < 1) return ''
+  let n = colIndex
+  let out = ''
+  while (n > 0) {
+    const rem = (n - 1) % 26
+    out = String.fromCharCode(65 + rem) + out
+    n = Math.floor((n - 1) / 26)
+  }
+  return out
+}
+
+/**
  * Parsea una celda como "A15" → { column: 'A', row: 15, colIndex: 1 }
  * colIndex es 1-based (A=1, B=2, ..., Z=26, AA=27).
  */
@@ -85,5 +101,6 @@ module.exports = {
   validateExcelCell,
   safeExcelCell,
   parseExcelCell,
+  columnLetter,
   groupServicesByExcelCell,
 }
