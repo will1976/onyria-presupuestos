@@ -30,8 +30,38 @@ if (!app) {
 const gotLock = app.requestSingleInstanceLock()
 if (!gotLock) { app.quit(); process.exit(0) }
 
-const log = (...args) => console.log('[Electron]', ...args)
-const errLog = (...args) => console.error('[Electron]', ...args)
+// ── File logging ─────────────────────────────────────────────────────────────
+// Stdout/stderr no son visibles cuando el .exe se lanza desde el shortcut
+// de Windows (GUI subsystem). Espejamos los logs a un archivo en
+// %LOCALAPPDATA%\Onyria\logs\ para poder diagnosticar en el cliente.
+let logStream = null
+;(function initFileLogging() {
+  try {
+    const os = require('os')
+    const base = process.env.LOCALAPPDATA
+      || path.join(os.homedir(), 'AppData', 'Local')
+    const logDir = path.join(base, 'Onyria', 'logs')
+    fs.mkdirSync(logDir, { recursive: true })
+    const logFile = path.join(logDir, `main-${new Date().toISOString().slice(0,10)}.log`)
+    logStream = fs.createWriteStream(logFile, { flags: 'a' })
+    logStream.write(`\n\n===== ${new Date().toISOString()} ===== app start (pid=${process.pid}) =====\n`)
+  } catch (e) {
+    // Si no podemos abrir log file, seguimos sin él
+  }
+})()
+
+function writeLog(level, args) {
+  if (!logStream) return
+  try {
+    const line = `[${new Date().toISOString()}] [${level}] ` + args.map(a =>
+      typeof a === 'string' ? a : (a instanceof Error ? `${a.message}\n${a.stack}` : JSON.stringify(a))
+    ).join(' ') + '\n'
+    logStream.write(line)
+  } catch {}
+}
+
+const log = (...args) => { try { console.log('[Electron]', ...args) } catch {}; writeLog('INFO', args) }
+const errLog = (...args) => { try { console.error('[Electron]', ...args) } catch {}; writeLog('ERROR', args) }
 
 // ── Paths ────────────────────────────────────────────────────────────────────
 const isPackaged = app.isPackaged
@@ -122,13 +152,23 @@ function startBackend() {
   return new Promise((resolve, reject) => {
     try {
       log('Starting backend...')
+      // Redirigimos el console del backend al log file
+      const origConsoleLog   = console.log
+      const origConsoleError = console.error
+      const origConsoleWarn  = console.warn
+      console.log   = (...args) => { try { origConsoleLog(...args)   } catch {}; writeLog('LOG',   args) }
+      console.error = (...args) => { try { origConsoleError(...args) } catch {}; writeLog('ERR',   args) }
+      console.warn  = (...args) => { try { origConsoleWarn(...args)  } catch {}; writeLog('WARN',  args) }
+
       const serverPath = resourcePath('server', 'src', 'index.js')
+      log('Requiring server from: ' + serverPath)
       require(serverPath)
-      // Backend hace app.listen async; esperamos a que responda /health
-      waitForHealth(`http://localhost:${PORT}/health`, 30000)
+      log('Server module loaded; waiting for /health...')
+      waitForHealth(`http://localhost:${PORT}/health`, 60000)
         .then(() => { log('Backend ready'); resolve() })
         .catch(reject)
     } catch (err) {
+      errLog('startBackend error:', err)
       reject(err)
     }
   })
@@ -200,8 +240,14 @@ function createWindow() {
 // ── App lifecycle ────────────────────────────────────────────────────────────
 app.whenReady().then(async () => {
   try {
+    log('App ready. isPackaged=' + isPackaged + ' platform=' + process.platform + ' arch=' + process.arch)
+    log('USER_DATA_DIR=' + USER_DATA_DIR)
+    log('Resource base=' + path.join(__dirname, '..'))
     ensureUserDirs()
     setBackendEnv()
+    log('NODE_ENV=' + process.env.NODE_ENV + ' PORT=' + process.env.PORT)
+    log('DB_PATH=' + process.env.DB_PATH)
+    log('TRANSFORMERS_CACHE=' + process.env.TRANSFORMERS_CACHE)
     await startBackend()
     createWindow()
   } catch (err) {

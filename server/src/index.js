@@ -55,15 +55,24 @@ app.use('/api/servicios',     serviciosRoutes)
 app.use('/api/clientes',      clientesRoutes)
 app.use('/api/ia',            iaRoutes)
 
-// ── Servir React build en producción ──────────────────────────────────────
-if (config.nodeEnv === 'production') {
-  const clientBuild = path.join(__dirname, '../../client/dist')
+// ── Servir React build si está presente ───────────────────────────────────
+// Detectamos por existencia del bundle (no por NODE_ENV) para que el .exe
+// empacado por Electron siempre sirva la SPA, incluso si NODE_ENV no llega
+// correctamente al proceso (envs heredados pueden sobreescribir).
+const fs = require('fs')
+const clientBuild = path.join(__dirname, '../../client/dist')
+const clientIndex = path.join(clientBuild, 'index.html')
+const hasClientBuild = fs.existsSync(clientIndex)
+
+if (hasClientBuild) {
   app.use(express.static(clientBuild))
+  // Catch-all SPA: cualquier ruta no-API devuelve index.html para que React
+  // Router maneje el deep linking interno
   app.get('*', (req, res) => {
-    res.sendFile(path.join(clientBuild, 'index.html'))
+    res.sendFile(clientIndex)
   })
 } else {
-  // ── 404 (solo en desarrollo) ─────────────────────────────────────────────
+  // Modo dev sin build: 404 JSON
   app.use((req, res) => {
     res.status(404).json({ success: false, error: `Ruta no encontrada: ${req.method} ${req.path}` })
   })
