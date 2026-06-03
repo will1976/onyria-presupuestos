@@ -154,14 +154,29 @@ function pickFreePort() {
   })
 }
 
+// Defaults embebidos en el build (claves de producción, equivalente a
+// server/.env). Vive en electron-app/embedded-config.js, archivo que
+// está en .gitignore y no se sube al repo, pero SÍ se incluye en el
+// asar al hacer `npm run dist` (porque build.files incluye electron-app/**).
+//
+// Si el archivo no existe (clon limpio sin haberlo creado), cae a {} y la
+// app arranca igual pero la IA queda sin GROQ_API_KEY.
+let EMBEDDED_DEFAULTS = {}
+try {
+  EMBEDDED_DEFAULTS = require('./embedded-config')
+} catch (e) {
+  // sin claves embebidas — IA y otras features que requieran API keys
+  // no funcionarán hasta que el usuario las setee como env vars
+}
+
 function setBackendEnv() {
   process.env.NODE_ENV            = 'production'
   process.env.PORT                = String(port)
   process.env.DB_PATH             = DB_PATH
   process.env.TRANSFORMERS_CACHE  = TRANSFORMERS_CACHE
   process.env.CLIENT_URL          = `http://localhost:${port}`
-  if (!process.env.JWT_SECRET) {
-    process.env.JWT_SECRET = 'onyria_local_jwt_' + Date.now()
+  for (const [k, v] of Object.entries(EMBEDDED_DEFAULTS)) {
+    if (!process.env[k]) process.env[k] = v
   }
 }
 
