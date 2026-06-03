@@ -1,6 +1,6 @@
 {
   "name": "onyria-presupuestos",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "private": true,
   "description": "Sistema de Presupuestos Onyria Studio — local single-user desktop app",
   "author": {
