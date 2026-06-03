@@ -20,6 +20,7 @@ const { app, BrowserWindow, dialog, shell, Menu } = require('electron')
 const path = require('path')
 const fs   = require('fs')
 const http = require('http')
+const net  = require('net')
 
 if (!app) {
   console.error('[Electron] FATAL: electron.app is undefined. ¿ELECTRON_RUN_AS_NODE seteado en el sistema?')
@@ -135,14 +136,30 @@ function copyDirRecursive(src, dest) {
 }
 
 // ── Backend lifecycle ────────────────────────────────────────────────────────
-const PORT = process.env.PORT || '3001'
+// El puerto se elige dinámicamente al arrancar — pedimos al SO un puerto
+// libre (rango efímero) en vez de hardcodear 3001. Si el cliente tiene OTRO
+// software escuchando 3001, antes esto causaba que la BrowserWindow cargara
+// el contenido de ese otro programa.
+let port = 0
+
+function pickFreePort() {
+  return new Promise((resolve, reject) => {
+    const server = net.createServer()
+    server.unref()
+    server.on('error', reject)
+    server.listen(0, '127.0.0.1', () => {
+      const p = server.address().port
+      server.close(() => resolve(p))
+    })
+  })
+}
 
 function setBackendEnv() {
   process.env.NODE_ENV            = 'production'
-  process.env.PORT                = String(PORT)
+  process.env.PORT                = String(port)
   process.env.DB_PATH             = DB_PATH
   process.env.TRANSFORMERS_CACHE  = TRANSFORMERS_CACHE
-  process.env.CLIENT_URL          = `http://localhost:${PORT}`
+  process.env.CLIENT_URL          = `http://localhost:${port}`
   if (!process.env.JWT_SECRET) {
     process.env.JWT_SECRET = 'onyria_local_jwt_' + Date.now()
   }
@@ -164,7 +181,7 @@ function startBackend() {
       log('Requiring server from: ' + serverPath)
       require(serverPath)
       log('Server module loaded; waiting for /health...')
-      waitForHealth(`http://localhost:${PORT}/health`, 60000)
+      waitForHealth(`http://localhost:${port}/health`, 60000)
         .then(() => { log('Backend ready'); resolve() })
         .catch(reject)
     } catch (err) {
@@ -174,19 +191,30 @@ function startBackend() {
   })
 }
 
+// waitForHealth ahora verifica que /health responda con el JSON de Onyria
+// (service === 'Onyria Studio API'). Si otra cosa devuelve 200 en ese puerto,
+// lo rechazamos en vez de cargarlo en la BrowserWindow.
 function waitForHealth(url, timeoutMs) {
   return new Promise((resolve, reject) => {
     const start = Date.now()
     const tryOnce = () => {
       const req = http.get(url, res => {
-        if (res.statusCode === 200) return resolve()
-        retry()
+        if (res.statusCode !== 200) return retry()
+        let body = ''
+        res.on('data', chunk => { body += chunk })
+        res.on('end', () => {
+          try {
+            const j = JSON.parse(body)
+            if (j && j.data && j.data.service === 'Onyria Studio API') return resolve()
+          } catch {}
+          retry()
+        })
       })
       req.on('error', retry)
       req.setTimeout(1000, () => { req.destroy(); retry() })
     }
     const retry = () => {
-      if (Date.now() - start > timeoutMs) return reject(new Error(`Backend no respondió en ${timeoutMs}ms`))
+      if (Date.now() - start > timeoutMs) return reject(new Error(`Backend Onyria no respondió en ${timeoutMs}ms`))
       setTimeout(tryOnce, 200)
     }
     tryOnce()
@@ -218,7 +246,7 @@ function createWindow() {
   // Menú minimal en producción (sin DevTools por defecto)
   if (isPackaged) Menu.setApplicationMenu(null)
 
-  mainWindow.loadURL(`http://localhost:${PORT}/`)
+  mainWindow.loadURL(`http://localhost:${port}/`)
 
   mainWindow.once('ready-to-show', () => {
     mainWindow.show()
@@ -229,7 +257,7 @@ function createWindow() {
 
   // Links externos → navegador del sistema (no abrir dentro de la app)
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
-    if (!url.startsWith(`http://localhost:${PORT}`)) {
+    if (!url.startsWith(`http://localhost:${port}`)) {
       shell.openExternal(url)
       return { action: 'deny' }
     }
@@ -244,6 +272,8 @@ app.whenReady().then(async () => {
     log('USER_DATA_DIR=' + USER_DATA_DIR)
     log('Resource base=' + path.join(__dirname, '..'))
     ensureUserDirs()
+    port = await pickFreePort()
+    log('Free port picked: ' + port)
     setBackendEnv()
     log('NODE_ENV=' + process.env.NODE_ENV + ' PORT=' + process.env.PORT)
     log('DB_PATH=' + process.env.DB_PATH)
